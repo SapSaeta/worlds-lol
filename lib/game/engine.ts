@@ -340,7 +340,23 @@ export const STAGES = [
   { name: "Final", city: "Nueva York" },
 ];
 
-export const stageLevel = (stage: number) => [3, 6, 9, 12, 15][stage] ?? 15;
+/**
+ * Dificultad por fase. Con una sola vida, el Play-In se pasa casi siempre y
+ * cada fase aprieta más: niveles, tamaño y fuerza de rivales y jefes.
+ */
+export const DIFFICULTY = {
+  startLevel: 5,
+  stageLevel: [3, 6, 9, 12, 15],
+  rivalSize: [1, 2, 2, 3, 3],
+  rivalMult: [1, 1.04, 1.08, 1.12, 1.16],
+  bossSize: [3, 4, 4, 5, 5],
+  bossLevel: [1, 2, 2, 3, 3],
+  bossMult: [1, 1.05, 1.1, 1.18, 1.28],
+  monsterLevel: 2,
+  dmgK: 4,
+};
+
+export const stageLevel = (stage: number) => DIFFICULTY.stageLevel[stage] ?? DIFFICULTY.stageLevel.at(-1)!;
 
 const DRAKE_LIST = Object.keys(DRAKES) as Drake[];
 
@@ -440,7 +456,7 @@ export function newRun(trainer: GPlayer, starter: string, data: GameData): Run {
   const bosses = pickBosses(data, trainer.team);
   return {
     trainer,
-    team: [newUnit(starter, stageLevel(0) + 1, data, trainer.role)],
+    team: [newUnit(starter, DIFFICULTY.startLevel, data, trainer.role)],
     gold: 500,
     stage: 0,
     row: -1,
@@ -509,7 +525,7 @@ export type Side = {
 export function rivalTrainer(run: Run, data: GameData): Side {
   const pool = data.players.filter((p) => p.team !== run.trainer.team && p.pool.length);
   const p = pick(pool);
-  const n = [1, 2, 2, 3, 3][run.stage] ?? 3;
+  const n = DIFFICULTY.rivalSize[run.stage] ?? 3;
   const champs = shuffle(p.pool.slice(0, 6)).slice(0, n);
   // Más fuerte cuanto más cerca del jefe.
   const lvl = stageLevel(run.stage) + Math.max(0, run.row - 1);
@@ -518,12 +534,10 @@ export function rivalTrainer(run: Run, data: GameData): Side {
     team: p.team,
     image: p.image,
     units: champs.map((c) => newUnit(c, Math.max(1, lvl), data)),
-    mult: 1 + 0.05 * run.stage,
+    mult: DIFFICULTY.rivalMult[run.stage] ?? 1,
     skill: 0.55,
   };
 }
-
-const BOSS_SIZE = [3, 4, 4, 5, 5];
 
 /** Jefe de la fase: el equipo real que le tocó a esta fase al empezar la partida. */
 export function bossTeam(run: Run, data: GameData): Side & { teamData: GTeam } {
@@ -536,18 +550,18 @@ export function bossTeam(run: Run, data: GameData): Side & { teamData: GTeam } {
     image: team.image,
     teamData: team,
     units: shuffle(players)
-      .slice(0, BOSS_SIZE[run.stage] ?? 5)
-      .map((p) => newUnit(pick(p.pool.slice(0, 3)), Math.min(MAX_LEVEL, stageLevel(run.stage) + 3), data)),
-    mult: 1 + 0.07 * run.stage,
+      .slice(0, DIFFICULTY.bossSize[run.stage] ?? 5)
+      .map((p) => newUnit(pick(p.pool.slice(0, 3)), Math.min(MAX_LEVEL, stageLevel(run.stage) + (DIFFICULTY.bossLevel[run.stage] ?? 3)), data)),
+    mult: DIFFICULTY.bossMult[run.stage] ?? 1,
     skill: 0.85,
   };
 }
 
 export function monsterSide(id: MonsterId, run: Run, data: GameData, drake?: Drake): Side {
   const c = monsterChamp(id, run.stage, drake);
-  const unit: Unit = { uid: uid(), champ: c.id, level: Math.min(MAX_LEVEL, stageLevel(run.stage) + 2), hp: 0, items: [], boost: 1 };
+  const unit: Unit = { uid: uid(), champ: c.id, level: Math.min(MAX_LEVEL, stageLevel(run.stage) + DIFFICULTY.monsterLevel), hp: 0, items: [], boost: 1 };
   unit.hp = derive(c, unit.level, [], data).hp;
-  return { name: c.name, units: [unit], champs: { [c.id]: c }, mult: 1 + 0.05 * run.stage, skill: 0.7 };
+  return { name: c.name, units: [unit], champs: { [c.id]: c }, mult: DIFFICULTY.rivalMult[run.stage] ?? 1, skill: 0.7 };
 }
 
 /* ---------- Combate ---------- */
@@ -646,11 +660,9 @@ function rawDamage(b: Battle, side: 0 | 1, att: Fighter, def: Fighter, m: Move) 
   const exec = m.fx.includes("execute") ? 1 + (1 - def.hp / def.max.hp) : 1;
   const mine = side === 0 ? b.bonus.dmg : 1;
   const taken = side === 1 ? b.bonus.taken : 1;
-  const d = (power / 100) * statFor(att, m) * DMG_K * (100 / (100 + Math.max(0, res))) * tm * lvl * exec * mine * taken * (att.st.buff ? 1.3 : 1) * (def.st.guard ? 0.6 : 1);
+  const d = (power / 100) * statFor(att, m) * DIFFICULTY.dmgK * (100 / (100 + Math.max(0, res))) * tm * lvl * exec * mine * taken * (att.st.buff ? 1.3 : 1) * (def.st.guard ? 0.6 : 1);
   return { d, tm };
 }
-
-const DMG_K = 4;
 
 /** Daño aproximado de un movimiento contra el rival actual (para los botones). */
 export function estimate(b: Battle, side: 0 | 1, m: Move) {
@@ -933,7 +945,7 @@ export function captureOptions(b: Battle): Unit[] {
 
 export function addUnit(run: Run, u: Unit, data: GameData, replace?: string): Run {
   const r: Run = structuredClone(run);
-  const fresh: Unit = { ...u, uid: uid(), items: [], boost: 1, level: Math.max(1, u.level - 1) };
+  const fresh: Unit = { ...u, uid: uid(), items: [], boost: 1 };
   fresh.hp = unitStats(fresh, data, r.trainer.role).hp;
   if (replace) r.team = r.team.map((x) => (x.uid === replace ? fresh : x));
   else if (r.team.length < MAX_TEAM) r.team.push(fresh);

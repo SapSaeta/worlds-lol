@@ -13,6 +13,7 @@ import { TeamBar } from "@/components/game/TeamBar";
 import { ChampSprite, Hp, PixelIcon, StatLine, TypeBadge } from "@/components/game/parts";
 import { drawCard, resultLine, shareText, toBlob, xIntent } from "@/components/game/share";
 import {
+  DIFFICULTY,
   DRAKES,
   MAX_TEAM,
   MONSTERS,
@@ -36,7 +37,6 @@ import {
   rivalTrainer,
   score,
   shopStock,
-  stageLevel,
   startBattle,
   trainerOptions,
   type Action,
@@ -371,7 +371,7 @@ function TrainerCard({ p, data, onPick }: { p: GPlayer; data: GameData; onPick: 
 
 function StarterCard({ id, trainer, data, onPick }: { id: string; trainer: GPlayer; data: GameData; onPick: () => void }) {
   const c = data.champions[id];
-  const d = derive(c, stageLevel(0), [], data, { role: trainer.role });
+  const d = derive(c, DIFFICULTY.startLevel, [], data, { role: trainer.role });
   return (
     <div className="g-starter card">
       <ChampSprite champ={c} size={88} res={30} />
@@ -429,7 +429,7 @@ function Reward({ run, data, screen, onDone }: { run: Run; data: GameData; scree
                   <ChampSprite champ={c} size={56} />
                   <span className="bold">{c.name}</span>
                   <TypeBadge cls={c.cls} />
-                  <span className="g-lv">Nv {Math.max(1, u.level - 1)}</span>
+                  <span className="g-lv">Nv {u.level}</span>
                 </button>
               );
             })}
