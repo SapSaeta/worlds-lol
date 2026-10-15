@@ -5,10 +5,13 @@ import { useEffect, useMemo, useState } from "react";
 import { HpBar, ROLE_LABEL, ROLE_ORDER, RoleBadge, StatBars } from "@/components/Pixel";
 import { PixelImg } from "@/components/PixelImg";
 import { TeamLogo } from "@/components/TeamLogo";
+import { TournamentMap } from "@/components/TournamentMap";
+import type { StageInfo } from "@/config/tournament";
 import type { ChampStat, PlayerStat, StatsData } from "@/lib/gamestats";
-import type { Team } from "@/lib/types";
+import type { Team, TournamentMap as MapData } from "@/lib/types";
 
 const TABS = [
+  { id: "mapa", label: "Mapa" },
   { id: "equipos", label: "Equipos" },
   { id: "jugadores", label: "Jugadores" },
   { id: "campeones", label: "Campeones" },
@@ -31,8 +34,10 @@ const num = (n: number) => String(n).padStart(3, "0");
 
 type TourLink = { slug: string; name: string; href: string };
 
-export function Worlddex({ stats, teams, ongoing, tournaments }: { stats: StatsData; teams: Team[]; ongoing: boolean; tournaments: TourLink[] }) {
-  const [tab, setTab] = useState<TabId>("equipos");
+type Props = { stats: StatsData; teams: Team[]; ongoing: boolean; tournaments: TourLink[]; map: MapData; stages: StageInfo[] };
+
+export function Worlddex({ stats, teams, ongoing, tournaments, map, stages }: Props) {
+  const [tab, setTab] = useState<TabId>("mapa");
 
   useEffect(() => {
     const fromHash = () => {
@@ -83,6 +88,7 @@ export function Worlddex({ stats, teams, ongoing, tournaments }: { stats: StatsD
         <div className="card dialog note">No he podido cargar las estadísticas ahora mismo ({stats.error}). Vuelve a intentarlo en un rato.</div>
       ) : null}
 
+      {tab === "mapa" ? <TournamentMap map={map} info={stages} teams={teams} /> : null}
       {tab === "equipos" ? <TeamsTab stats={stats} teams={teams} ongoing={ongoing} /> : null}
       {tab === "jugadores" ? <PlayersTab stats={stats} tournaments={tournaments} /> : null}
       {tab === "campeones" ? <ChampionsTab stats={stats} tournaments={tournaments} /> : null}

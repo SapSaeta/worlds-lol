@@ -21,6 +21,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <SiteHeader />
         <main>{children}</main>
+        <footer className="site-footer">
+          <p>
+            worlddex.lol se ha creado bajo la política «Legal Jibber Jabber» de Riot Games usando recursos propiedad de Riot Games. Riot Games no respalda ni
+            patrocina este proyecto.
+          </p>
+          <p>Web de fans sin ánimo de lucro. Datos y emisiones de lolesports.com.</p>
+        </footer>
       </body>
     </html>
   );

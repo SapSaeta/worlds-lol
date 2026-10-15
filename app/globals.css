@@ -1173,6 +1173,438 @@ button {
   animation: blink 1s steps(1) infinite;
 }
 
+/* ---------- Mapa del torneo ---------- */
+
+.tmap {
+  display: grid;
+  gap: 18px;
+  margin-top: 24px;
+}
+
+/* Ruta entre sedes, como el mapa de una región */
+.tm-route {
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  max-width: 820px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 24px 10px 14px;
+  list-style: none;
+}
+
+.tm-route li {
+  position: relative;
+}
+
+.tm-route li + li::before {
+  content: "";
+  position: absolute;
+  top: 26px;
+  left: calc(-50% + 30px);
+  right: calc(50% + 30px);
+  border-top: 4px dashed var(--ink-2);
+}
+
+.tm-town {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  padding: 6px 4px 8px;
+  font: inherit;
+  color: var(--ink);
+  background: none;
+  border: 2px solid transparent;
+  cursor: pointer;
+}
+
+.tm-town[aria-pressed="true"] {
+  background: var(--card-2);
+  border-color: var(--line);
+}
+
+.tm-house {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  background: var(--card-3);
+  border: var(--b) solid var(--line);
+  box-shadow: 4px 4px 0 0 var(--shadow);
+}
+
+.tm-house i {
+  width: 12px;
+  height: 14px;
+  margin-top: 10px;
+  background: var(--line);
+}
+
+.tm-town.done .tm-house {
+  background: var(--koi);
+}
+
+.tm-town.live .tm-house {
+  background: var(--title);
+}
+
+.tm-town[aria-pressed="true"] .tm-house {
+  transform: translate(4px, 4px);
+  box-shadow: none;
+}
+
+.tm-here {
+  position: absolute;
+  top: -22px;
+  padding: 3px 5px 2px;
+  font-family: var(--font-pixel);
+  font-size: 7px;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: var(--title);
+  border: 2px solid var(--line);
+  animation: bob 0.8s steps(2) infinite;
+}
+
+.tm-town-name {
+  margin-top: 4px;
+  font-family: var(--font-pixel);
+  font-size: 9px;
+  text-align: center;
+}
+
+.tm-town-city {
+  font-size: 19px;
+  text-align: center;
+}
+
+.tm-town-dates {
+  font-size: 17px;
+  color: var(--ink-2);
+}
+
+.badge.tm-state.done {
+  background: var(--koi-dark);
+}
+.badge.tm-state.live {
+  background: var(--red);
+}
+
+.tm-info {
+  display: grid;
+  gap: 4px;
+  max-width: 820px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 10px 14px;
+  text-align: center;
+}
+
+.dex-filters.tm-teams {
+  width: 100%;
+  margin: 0 auto;
+}
+
+.tm-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tm-chip .team-logo {
+  width: 16px;
+  height: 16px;
+}
+
+.tm-path {
+  margin: 4px 0 12px;
+}
+
+.tm-path ol {
+  display: grid;
+  gap: 4px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tm-path button {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  width: 100%;
+  padding: 4px 8px;
+  font: inherit;
+  font-size: 18px;
+  text-align: left;
+  color: var(--ink);
+  background: var(--card-2);
+  border: 2px solid transparent;
+  cursor: pointer;
+}
+
+.tm-path button:hover {
+  border-color: var(--line);
+}
+
+.tm-vs {
+  flex: 1;
+}
+
+.badge.tm-w {
+  background: #3f9a48;
+}
+.badge.tm-l {
+  background: var(--red);
+}
+
+/* Cuadro */
+.tm-board {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  padding: 14px;
+  background: var(--card);
+  border: var(--b) solid var(--line);
+  box-shadow: var(--sh) var(--sh) 0 0 var(--shadow);
+}
+
+.tm-col {
+  display: flex;
+  flex: 1 0 172px;
+  flex-direction: column;
+  min-width: 172px;
+}
+
+.tm-board.bracket,
+.tm-board.double {
+  justify-content: safe center;
+}
+
+.tm-board.bracket .tm-col,
+.tm-board.double .tm-col {
+  max-width: 280px;
+}
+
+.tm-col-title {
+  margin: 0 0 10px;
+  font-family: var(--font-pixel);
+  font-size: 9px;
+  font-weight: normal;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.tm-col-title small {
+  display: block;
+  margin-top: 5px;
+  font-family: var(--font-body);
+  font-size: 17px;
+  color: var(--ink-2);
+  text-transform: none;
+}
+
+.tm-col-body,
+.tm-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tm-col-body {
+  flex: 1;
+  gap: 14px;
+}
+
+/* En los cuadros de eliminación cada ronda se centra entre las de la anterior */
+.tm-board.bracket .tm-col-body,
+.tm-board.bracket .tm-group {
+  flex: 1;
+  justify-content: space-around;
+}
+
+.tm-board.double .tm-col:nth-child(2) .tm-col-body {
+  justify-content: space-between;
+}
+
+.tm-board.double .tm-col:nth-child(3) .tm-col-body {
+  justify-content: flex-end;
+}
+
+.tm-board.double .tm-col:nth-child(4) .tm-col-body {
+  justify-content: center;
+}
+
+.tm-group-title {
+  font-family: var(--font-pixel);
+  font-size: 7px;
+  line-height: 1.5;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.tm-col-note {
+  font-family: var(--font-pixel);
+  font-size: 7px;
+  line-height: 1.5;
+  text-align: center;
+  color: var(--koi-dark);
+}
+
+.tm-match {
+  display: grid;
+  gap: 1px;
+  padding: 4px 6px 6px;
+  background: #f6f3ea;
+  border: 2px solid var(--line);
+  box-shadow: 3px 3px 0 0 var(--card-3);
+  transition: opacity 120ms steps(2);
+}
+
+.tm-match.live {
+  border-color: var(--red);
+  box-shadow: 3px 3px 0 0 var(--red);
+}
+
+.tm-match.hl {
+  background: #fff4c4;
+  border-color: var(--title-lo);
+  box-shadow: 3px 3px 0 0 var(--title-lo);
+}
+
+.tm-match.dim {
+  opacity: 0.35;
+}
+
+.tm-match-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 16px;
+  color: var(--ink-2);
+}
+
+.tm-bo {
+  font-family: var(--font-pixel);
+  font-size: 7px;
+  color: var(--koi-dark);
+}
+
+.tm-row {
+  display: grid;
+  grid-template-columns: 20px 1fr auto;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 2px;
+  font: inherit;
+  font-size: 19px;
+  text-align: left;
+  color: var(--ink);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.tm-row .team-logo {
+  width: 20px;
+  height: 20px;
+}
+
+.tm-row:disabled,
+.tm-row.empty {
+  color: var(--muted);
+  cursor: default;
+}
+
+.tm-row:disabled .tm-code,
+.tm-row.empty .tm-code {
+  font-size: 16px;
+}
+
+.tm-row:not(:disabled):not(.empty):hover {
+  background: var(--card-2);
+}
+
+.tm-row.win {
+  text-shadow: 0.6px 0 0 currentColor;
+}
+
+.tm-row.loss {
+  color: var(--muted);
+}
+
+.tm-row.loss .team-logo {
+  opacity: 0.5;
+  filter: grayscale(1);
+}
+
+.tm-row.me {
+  background: var(--title);
+}
+
+.tm-code {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.tm-score {
+  min-width: 12px;
+  font-family: var(--font-pixel);
+  font-size: 9px;
+  text-align: right;
+}
+
+.team-logo.fallback.tm-q {
+  width: 20px;
+  height: 20px;
+  font-size: 8px;
+}
+
+.tm-watch {
+  margin-top: 2px;
+  text-align: right;
+  color: var(--red);
+}
+
+.tm-records.up .tm-group-title {
+  color: #2f7a36;
+}
+.tm-records.down .tm-group-title {
+  color: var(--red);
+}
+
+.tm-records .tm-row {
+  background: #f6f3ea;
+  border: 2px solid var(--card-3);
+}
+
+.tm-tz {
+  margin: 0;
+  text-align: center;
+  color: var(--koi-light);
+}
+
+/* Aviso legal de Riot */
+.site-footer {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 8px 20px 28px;
+  font-size: 17px;
+  text-align: center;
+  color: var(--koi-light);
+}
+
+.site-footer p {
+  margin: 4px 0;
+}
+
 /* ---------- Responsive ---------- */
 
 @media (max-width: 1000px) {
@@ -1235,6 +1667,46 @@ button {
   .player-bar .now {
     width: 100%;
     flex: none;
+  }
+  .tm-route {
+    padding: 24px 4px 10px;
+  }
+
+  .tm-town-name {
+    font-size: 7px;
+  }
+
+  .tm-town-city,
+  .tm-town-dates {
+    font-size: 15px;
+  }
+
+  /* En el móvil las rondas van una debajo de otra, con los cruces de dos en dos */
+  .tm-board {
+    flex-direction: column;
+    padding: 10px;
+  }
+
+  .tm-col {
+    flex: none;
+    min-width: 0;
+  }
+
+  .tm-board .tm-col-body {
+    justify-content: flex-start !important;
+  }
+
+  .tm-group {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  }
+
+  .tm-group-title {
+    grid-column: 1 / -1;
+  }
+
+  .tm-match-head {
+    font-size: 15px;
   }
 }
 
