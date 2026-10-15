@@ -93,7 +93,7 @@ async function feed(kind: "window" | "details", gameId: string, at?: number): Pr
   return text ? JSON.parse(text) : null;
 }
 
-async function mapLimit<T, R>(items: T[], limit: number, fn: (t: T) => Promise<R>): Promise<PromiseSettledResult<R>[]> {
+export async function mapLimit<T, R>(items: T[], limit: number, fn: (t: T) => Promise<R>): Promise<PromiseSettledResult<R>[]> {
   const out: PromiseSettledResult<R>[] = new Array(items.length);
   let next = 0;
   async function worker() {

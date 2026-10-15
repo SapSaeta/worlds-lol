@@ -178,14 +178,14 @@ export async function fetchGpr(t: TournamentConfig): Promise<Map<string, Gpr>> {
 /** Series recientes que se miran para saber quién juega de verdad. */
 const RECENT_SERIES = 3;
 
-async function feedWindow(gameId: string): Promise<Json | null> {
+export async function feedWindow(gameId: string): Promise<Json | null> {
   const res = await fetch(`${FEED}/window/${gameId}`, { cache: "force-cache" });
   if (!res.ok || res.status === 204) return null;
   const text = await res.text();
   return text ? JSON.parse(text) : null;
 }
 
-async function leagueIdsByName(): Promise<Map<string, string>> {
+export async function leagueIdsByName(): Promise<Map<string, string>> {
   const r = await api("getLeagues", {}, 86400);
   return new Map((r.data?.leagues ?? []).map((l: Json) => [String(l.name), String(l.id)]));
 }
