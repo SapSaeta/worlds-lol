@@ -1,21 +1,25 @@
-/* Estética inspirada en pokelike.xyz: cielo pixelado de fondo, cartas color
+/* Estética inspirada en pokelike.xyz: escena pixelada de fondo, cartas color
    crema con borde negro y sombra dura, títulos amarillos en Press Start 2P y
-   texto monoespaciado pixel. */
+   texto monoespaciado pixel. Los azules son un guiño a KOI: el #4b9bec es el
+   del escudo oficial de Movistar KOI y los marinos son de su misma familia. */
 
 :root {
-  --sky: #8cc8f4;
+  --sky: #081429;
+  --koi: #4b9bec;
+  --koi-dark: #2b66a8;
+  --koi-light: #8cc2f7;
   --card: #e7e4d9;
   --card-2: #dcd8ca;
   --card-3: #d0ccbd;
   --line: #2a2a2a;
-  --shadow: #2a2a2a;
+  --shadow: var(--koi-dark);
   --ink: #1e1e1e;
   --ink-2: #4a4a44;
   --muted: #8a8a80;
   --dark: #2e2e2e;
   --dark-2: #3a3a3a;
-  --slate: #51748e;
-  --slate-lo: #3c5a70;
+  --slate: #1f4c80;
+  --slate-lo: #16365e;
   --title: #f8d860;
   --title-lo: #b89a30;
   --gold: #d4a838;
@@ -112,7 +116,7 @@ button {
   margin: 10px 0 0;
   font-family: var(--font-pixel);
   font-size: clamp(9px, 1vw, 12px);
-  color: #8db4cb;
+  color: var(--koi-light);
   text-align: center;
 }
 
@@ -173,6 +177,13 @@ button {
 .btn[aria-current="page"] {
   transform: translate(4px, 4px);
   box-shadow: 0 0 0 0 var(--shadow);
+}
+
+/* Sección actual en azul KOI */
+.nav .btn[aria-current="page"],
+.tour-switch .btn[aria-current="page"] {
+  color: var(--sky);
+  background: var(--koi);
 }
 
 .btn:focus-visible,
@@ -369,9 +380,14 @@ button {
   gap: 14px;
 }
 
+.logo .icon-btn {
+  width: 56px;
+  height: 56px;
+}
+
 .logo .icon-btn img {
-  width: 24px;
-  height: 24px;
+  width: 48px;
+  height: 48px;
 }
 
 .logo-text {
@@ -994,7 +1010,8 @@ button {
 }
 
 .dex-tabs .btn[aria-selected="true"] {
-  background: var(--title);
+  color: var(--sky);
+  background: var(--koi);
 }
 
 .dex-filters {
