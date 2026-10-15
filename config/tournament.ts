@@ -17,6 +17,12 @@ export type TournamentConfig = {
   /** Ventana de fechas (ISO) para filtrar el calendario */
   start: string;
   end: string;
+  /**
+   * Slugs de lolesports de los equipos clasificados. Hace falta mientras la
+   * clasificación oficial tenga huecos por definir (TBD): así salen todos en la
+   * Worlddex y en la tabla aunque aún no tengan partidos.
+   */
+  teams?: string[];
 };
 
 export const TOURNAMENTS: TournamentConfig[] = [
@@ -28,6 +34,20 @@ export const TOURNAMENTS: TournamentConfig[] = [
     tournamentId: "115660540725177488",
     start: "2026-10-14T00:00:00Z",
     end: "2026-11-16T00:00:00Z",
+    teams: [
+      // LCK
+      "geng", "hanwha-life-esports", "t1", "dwg-kia",
+      // LPL
+      "anyones-legend", "bilibili-gaming", "top-esports", "invictus-gaming",
+      // LEC
+      "g2-esports", "mad-lions", "karmine-corp",
+      // LCS
+      "team-liquid", "lyon-gaming", "cloud9",
+      // LCP
+      "team-secret-whales", "ctbc-flying-oyster", "saigon-buffalo-esports",
+      // CBLOL
+      "los", "furia",
+    ],
   },
   {
     slug: "worlds-2025",

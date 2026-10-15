@@ -91,10 +91,13 @@ async function fetchLiveStreams(t: TournamentConfig): Promise<LiveStream[]> {
     .map((s) => ({ provider: s.provider, channel: s.parameter, locale: s.locale }));
 }
 
-/** Slugs de los equipos del torneo según la clasificación oficial. */
+/** Slugs de los equipos del torneo: los clasificados de la configuración más los de la clasificación oficial. */
 export async function fetchTeamSlugs(t: TournamentConfig): Promise<string[]> {
-  const s = await api("getStandings", { tournamentId: t.tournamentId }, 600);
-  const slugs = new Set<string>();
+  const slugs = new Set<string>(t.teams ?? []);
+  const s = await api("getStandings", { tournamentId: t.tournamentId }, 600).catch((err) => {
+    if (!slugs.size) throw err;
+    return {} as Json;
+  });
   for (const stage of s.data?.standings?.[0]?.stages ?? [])
     for (const section of stage.sections ?? []) {
       for (const r of section.rankings ?? []) for (const team of r.teams ?? []) if (team.slug) slugs.add(team.slug);
