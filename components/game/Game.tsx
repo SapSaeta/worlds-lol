@@ -11,7 +11,7 @@ import { MapView } from "@/components/game/MapView";
 import { ShopView } from "@/components/game/ShopView";
 import { TeamBar } from "@/components/game/TeamBar";
 import { ChampSprite, Hp, PixelIcon, StatLine, TypeBadge } from "@/components/game/parts";
-import { drawCard, resultLine, resultSub, shareText, stageStates, telegramLink, toBlob, whatsappLink, xIntent, type CardFormat } from "@/components/game/share";
+import { drawCard, resultLine, resultSub, resultUrl, shareText, stageStates, telegramLink, toBlob, whatsappLink, xIntent, type CardFormat } from "@/components/game/share";
 import {
   DIFFICULTY,
   DRAKES,
@@ -454,14 +454,15 @@ function End({ run, data, onAgain }: { run: Run; data: GameData; onAgain: () => 
   const [format, setFormat] = useState<CardFormat>("square");
   const [cards, setCards] = useState<Partial<Record<CardFormat, Card>>>({});
   const [note, setNote] = useState("");
-  const [url, setUrl] = useState("https://worlddex.lol/jugar");
+  // Enlace propio del resultado: X, WhatsApp o Telegram enseñan su tarjeta en el post.
+  const [url, setUrl] = useState(() => resultUrl(run, "https://worlddex.lol"));
   const text = shareText(run);
   const card = cards[format];
 
   // Se dibujan las dos tarjetas: la cuadrada para posts y la vertical para historias.
   useEffect(() => {
     let alive = true;
-    setUrl(`${location.origin}/jugar`);
+    setUrl(resultUrl(run, location.origin));
     (async () => {
       for (const f of ["square", "story"] as CardFormat[]) {
         const canvas = await drawCard(run, data, f);

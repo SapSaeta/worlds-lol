@@ -1,8 +1,9 @@
 // Lo que se comparte al acabar: el mensaje (con emojis y la ruta por fases,
-// al estilo de Wordle) y una tarjeta dibujada en canvas, cuadrada para posts
-// o vertical para historias de Instagram y TikTok.
+// al estilo de Wordle), el enlace propio del resultado y una tarjeta dibujada
+// en canvas, cuadrada para posts o vertical para historias de Instagram y TikTok.
 
-import { STAGES, score, type Run } from "@/lib/game/engine";
+import { score, type Run } from "@/lib/game/engine";
+import * as R from "@/lib/game/result";
 import type { GameData } from "@/lib/game/types";
 
 export type CardFormat = "square" | "story";
@@ -10,62 +11,33 @@ export type CardFormat = "square" | "story";
 const W = 1080;
 const HEIGHT: Record<CardFormat, number> = { square: 1080, story: 1920 };
 
-/** 7.023 con punto de miles también en números de cuatro cifras. */
-const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-
-const pl = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+const { fmt, STAGE_SHORT } = R;
 
 /** La fuente pixel no trae mayúsculas con tilde: en los titulares van sin ella. */
 const plain = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").normalize("NFC");
 
-const STAGE_SHORT = ["PLAY-IN", "SUIZA", "CUARTOS", "SEMIS", "FINAL"];
-
-/** Titular del resultado, de más amargo a más épico. */
-const HEADLINES = ["Fuera en el Play-In", "Eliminado en la fase suiza", "Caído en cuartos", "¡Me quedé en semis!", "¡A un paso de la copa!"];
-const EMOJI = ["😭", "💀", "⚔️", "🔥", "😱"];
-
-export function resultLine(run: Run) {
-  return run.over === "champion" ? "¡CAMPEÓN DEL MUNDO!" : (HEADLINES[run.stage] ?? `Eliminado en ${STAGES[run.stage].name}`);
+export function toResult(run: Run): R.SharedResult {
+  return {
+    name: run.trainer.name,
+    team: run.trainer.team,
+    stage: run.stage,
+    champion: run.over === "champion",
+    score: score(run),
+    wins: run.wins,
+    objectives: run.objectives,
+    bosses: run.bosses,
+    killer: run.killer,
+    champs: run.team.map((u) => ({ id: u.champ, level: u.level })),
+  };
 }
 
-/** Quién te eliminó y dónde, o cómo ganaste. */
-const WHERE = ["en el Play-In", "en la fase suiza", "en cuartos", "en semis", "en la Final"];
+export const resultLine = (run: Run) => R.resultLine(toResult(run));
+export const resultSub = (run: Run) => R.resultSub(toResult(run));
+export const stageStates = (run: Run) => R.stageStates(toResult(run));
+export const shareText = (run: Run) => R.shareText(toResult(run));
 
-export function resultSub(run: Run) {
-  if (run.over === "champion") return `Sin perder ni un combate, con ${run.trainer.name} (${run.trainer.team})`;
-  const where = WHERE[run.stage] ?? `en ${STAGES[run.stage].name}`;
-  return run.killer ? `${run.killer} me eliminó ${where}` : `Eliminado ${where}`;
-}
-
-/** Hasta dónde llegaste, fase a fase: ganada, perdida o sin jugar. */
-export function stageStates(run: Run): ("won" | "lost" | "none")[] {
-  return STAGES.map((_, i) => (i < run.stage || run.over === "champion" ? "won" : i === run.stage ? "lost" : "none"));
-}
-
-export function stageTrack(run: Run) {
-  const squares = stageStates(run)
-    .map((s) => (s === "won" ? "🟩" : s === "lost" ? "🟥" : "⬛"))
-    .join("");
-  return run.over === "champion" ? `${squares}🏆` : squares;
-}
-
-export function shareText(run: Run) {
-  const champion = run.over === "champion";
-  const head = champion ? "🏆 ¡CAMPEÓN DEL MUNDO! 🏆" : `${EMOJI[run.stage] ?? "💀"} ${resultLine(run).toUpperCase()}`;
-  const what = champion ? "He ganado el Mundial sin perder ni un solo combate 😤" : `${resultSub(run)}.`;
-  const close = champion ? "Camino a la Copa: una sola vida y casi nadie lo consigue. ¿Te atreves? 👇" : "Camino a la Copa: una sola vida. ¿Llegas tú más lejos? 👇";
-  return [
-    head,
-    "",
-    what,
-    `${stageTrack(run)}  ${fmt(score(run))} puntos`,
-    `⚔️ ${pl(run.wins, "combate")} · 🐉 ${pl(run.objectives, "objetivo")} · 👑 ${run.bosses} ${run.bosses === 1 ? "jefe" : "jefes"}`,
-    `🎮 Entrenador: ${run.trainer.name} (${run.trainer.team})`,
-    "",
-    close,
-    "#Worlds2026",
-  ].join("\n");
-}
+/** Enlace propio del resultado: al publicarlo, la red enseña la tarjeta como vista previa. */
+export const resultUrl = (run: Run, origin: string) => `${origin}/jugar/r?${R.toQuery(toResult(run))}`;
 
 export const xIntent = (run: Run, url: string) => `https://x.com/intent/post?text=${encodeURIComponent(shareText(run))}&url=${encodeURIComponent(url)}`;
 export const whatsappLink = (run: Run, url: string) => `https://wa.me/?text=${encodeURIComponent(`${shareText(run)}\n${url}`)}`;
@@ -280,7 +252,7 @@ export async function drawCard(run: Run, data: GameData, format: CardFormat = "s
   box(ctx, 80, y, W - 160, L.scoreH, "#1f4c80", "#0d2a4d");
   text(ctx, "PUNTOS", 116, y + (story ? 40 : 28), story ? 26 : 20, "#f9d97c");
   text(ctx, fmt(score(run)), W - 116, y + (story ? 26 : 22), L.score, "#f8d860", { align: "right", shadow: 6 });
-  const stats = `${pl(run.wins, "combate")} · ${pl(run.objectives, "objetivo")} · ${run.bosses} ${run.bosses === 1 ? "jefe" : "jefes"}`;
+  const stats = R.statsLine(toResult(run));
   if (story) text(ctx, stats, W / 2, y + 140, 44, "#cfe4ff", { font: "VT323", align: "center" });
   else text(ctx, stats, 116, y + 64, 32, "#cfe4ff", { font: "VT323" });
   y += L.scoreH + 12;
