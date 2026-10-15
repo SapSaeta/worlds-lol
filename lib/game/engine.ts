@@ -459,7 +459,7 @@ function useMove(b: Battle, side: 0 | 1, move: Move, run: Run) {
   const who = side === 0 ? me.champ.name : `${me.champ.name} rival`;
   const supp = side === 0 && run.trainer.role === "support" ? 1.5 : 1;
   const mult = side === 0 ? teamDamageMult(run) : 1;
-  b.lines.push(`${who} usa ${move.name}.`);
+  b.lines.push(`${who} usa ${move.name}${/[!?.…]$/.test(move.name) ? "" : "."}`);
   if (move.key === "R") me.cdR = (move.cooldown ?? 3) + 1;
   if (move.shield) {
     me.shield += Math.round(me.max.hp * move.shield * supp);

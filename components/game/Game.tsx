@@ -13,6 +13,7 @@ import { TeamBar } from "@/components/game/TeamBar";
 import { ChampSprite, Hp, PixelIcon, StatLine, TypeBadge } from "@/components/game/parts";
 import { drawCard, resultLine, shareText, toBlob, xIntent } from "@/components/game/share";
 import {
+  LIVES,
   MAX_TEAM,
   ROLE_LABEL,
   ROLE_PERK,
@@ -138,6 +139,7 @@ export function Game({ data }: { data: GameData }) {
         <div className="dialog card">
           Elige a un jugador de los Worlds como entrenador y empieza con un campeón de su pool. Recorre la Grieta desde el
           Play-In hasta la final de Nueva York: combate, ficha campeones rivales, compra objetos y vence a los equipos jefe.
+          Tienes tres vidas, como en la fase suiza.
           <span className="next">▼</span>
         </div>
         <div className="g-actions-row">
@@ -172,7 +174,7 @@ export function Game({ data }: { data: GameData }) {
   };
 
   const afterReward = (battle: Battle, r: Run) => {
-    if (battle.kind !== "boss") return go({ s: "map" });
+    if (battle.kind !== "boss" || battle.result !== "win") return go({ s: "map" });
     const from = r.stage;
     const n = nextStage(r, data);
     setRun(n);
@@ -331,11 +333,24 @@ function Hud({ run, data }: { run: Run; data: GameData }) {
         <span title="Oro" className="g-gold">
           {fmt(run.gold)} oro
         </span>
+        <Lives n={run.lives} />
         {run.dragons ? <span title="Dragones">Dragón ×{run.dragons}</span> : null}
         {run.baron ? <span title="Mano del Barón">Barón</span> : null}
         <span title="Puntos">{fmt(score(run))} pts</span>
       </div>
     </div>
+  );
+}
+
+function Lives({ n }: { n: number }) {
+  return (
+    <span className="g-lives" title={`${n} ${n === 1 ? "vida" : "vidas"}`} aria-label={`${n} ${n === 1 ? "vida" : "vidas"}`}>
+      {Array.from({ length: LIVES }, (_, i) => (
+        <span key={i} className={i < n ? "" : "lost"}>
+          <PixelIcon name="fountain" size={14} />
+        </span>
+      ))}
+    </span>
   );
 }
 
@@ -387,6 +402,24 @@ function StarterCard({ id, trainer, data, onPick }: { id: string; trainer: GPlay
 function Reward({ run, data, screen, onDone }: { run: Run; data: GameData; screen: Extract<Screen, { s: "reward" }>; onDone: (r: Run) => void }) {
   const [replacing, setReplacing] = useState<Unit | null>(null);
   const { battle, gold, levels, reward } = screen;
+  if (battle.result !== "win")
+    return (
+      <div className="g-event card">
+        <h2 className="px-title g-event-title">Derrota contra {battle.foe.name}</h2>
+        <p>
+          Pierdes una vida. {run.lives === 1 ? "Te queda la última" : `Te quedan ${run.lives}`}: a la próxima derrota, quedas eliminado.
+        </p>
+        <Lives n={run.lives} />
+        <p className="muted">
+          {battle.kind === "boss" ? "Vuelves a la casilla anterior con el equipo curado y puedes volver a retar al jefe." : "Tu equipo sigue adelante con un poco de vida."}
+        </p>
+        <div className="g-actions-row">
+          <button type="button" className="btn" onClick={() => onDone(run)}>
+            Continuar
+          </button>
+        </div>
+      </div>
+    );
   const captures = captureOptions(battle).filter((u) => !run.team.some((m) => m.champ === u.champ));
   const title = battle.kind === "boss" ? `¡Has eliminado a ${battle.foe.name}!` : battle.kind === "objective" ? `¡${battle.foe.name} es tuyo!` : "¡Victoria!";
   return (

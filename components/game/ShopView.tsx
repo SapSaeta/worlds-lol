@@ -54,7 +54,7 @@ export function ShopView({ run, data, stock, msg, onBuy, onLeave }: { run: Run; 
                     })}
                   </span>
                 ) : it.kind === "basic" ? (
-                  <span className="px-small muted">Sirve para {usedIn(it.id)} objetos</span>
+                  <span className="px-small muted">Sirve para {usedIn(it.id)} {usedIn(it.id) === 1 ? "objeto" : "objetos"}</span>
                 ) : null}
               </span>
               <span className={`g-price px-small${cant ? " no" : ""}`}>{it.gold}</span>

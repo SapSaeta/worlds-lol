@@ -77,8 +77,9 @@ function toGChamp(version: string, c: Champion, spells: Spell[]): GChamp {
     base: {
       hp: Math.round(c.stats.hp),
       ad: Math.round(c.stats.attackdamage),
-      // Data Dragon no da poder de habilidad: sale de la puntuación de magia del campeón.
-      ap: Math.round(Math.max(c.info.magic, 2) * 7),
+      // Data Dragon no da poder de habilidad: sale de la puntuación de magia del
+      // campeón, en la misma escala que el daño de ataque (50-75).
+      ap: Math.round(50 + c.info.magic * 2.5),
       ar: Math.round(c.stats.armor),
       mr: Math.round(c.stats.spellblock),
       ms: Math.round(c.stats.movespeed),
