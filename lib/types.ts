@@ -64,3 +64,15 @@ export type WorldsData = {
   /** Fallos parciales de la API (no impiden mostrar datos) */
   warnings?: string[];
 };
+
+/** Una fase del torneo con sus series en el orden de la clasificación oficial. */
+export type MapStage = {
+  slug: string;
+  name: string;
+  matches: Match[];
+};
+
+export type TournamentMap = {
+  stages: MapStage[];
+  error?: string;
+};

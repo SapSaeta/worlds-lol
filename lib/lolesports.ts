@@ -5,7 +5,7 @@
 import { TOURNAMENT, type TournamentConfig } from "@/config/tournament";
 import { demoData } from "@/lib/demo";
 import { buildTeams } from "@/lib/teams";
-import type { Gpr, LiveStream, Match, MatchTeam, Player, WorldsData } from "@/lib/types";
+import type { Gpr, LiveStream, MapStage, Match, MatchTeam, Player, TournamentMap, WorldsData } from "@/lib/types";
 
 const BASE = "https://esports-api.lolesports.com/persisted/gw";
 const API_KEY = process.env.LOLESPORTS_API_KEY ?? "0TvQnueqKa5mxJntVWt0w4LpLfEkrV1Ta8rQBb9Z";
@@ -282,5 +282,43 @@ export async function getWorldsData(t: TournamentConfig = TOURNAMENT): Promise<W
     };
   } catch (err) {
     return { ...demoData(), error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+// ---------- Mapa del torneo ----------
+
+/** Serie sacada de la clasificación cuando aún no aparece en el calendario (sin fecha). */
+function standingsMatch(m: Json): Match {
+  const teams = [0, 1].map((i): MatchTeam => {
+    const t: Json = m.teams?.[i] ?? {};
+    return { code: t.code ?? "TBD", name: t.name ?? "Por decidir", image: https(t.image), gameWins: t.result?.gameWins ?? 0, outcome: t.result?.outcome ?? null };
+  }) as [MatchTeam, MatchTeam];
+  return { id: String(m.id), startTime: "", state: m.state ?? "unstarted", blockName: "", bestOf: 0, teams };
+}
+
+/**
+ * Todas las fases del torneo con sus series, también las que aún no tienen
+ * rivales, con fecha, formato y resultado. La clasificación oficial da qué
+ * serie va en cada fase y el calendario pone fechas y marcadores.
+ */
+export async function getTournamentMap(t: TournamentConfig = TOURNAMENT): Promise<TournamentMap> {
+  try {
+    const done = Date.parse(t.end) < Date.now();
+    const [s, schedule] = await Promise.all([
+      api("getStandings", { tournamentId: t.tournamentId }, done ? 86400 : 60),
+      fetchSchedule(t).catch(() => [] as Match[]),
+    ]);
+    const byId = new Map(schedule.map((m) => [m.id, m]));
+    const stages: MapStage[] = (s.data?.standings?.[0]?.stages ?? [])
+      .map((st: Json) => ({
+        slug: st.slug ?? "",
+        name: st.name ?? "",
+        matches: ((st.sections ?? []) as Json[]).flatMap((sec) => (sec.matches ?? []) as Json[]).map((m) => byId.get(String(m.id)) ?? standingsMatch(m)),
+      }))
+      .filter((st: MapStage) => st.matches.length);
+    if (!stages.length) throw new Error("La clasificación llegó vacía");
+    return { stages };
+  } catch (err) {
+    return { stages: [], error: err instanceof Error ? err.message : String(err) };
   }
 }

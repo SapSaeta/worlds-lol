@@ -3,6 +3,18 @@
 // Para reutilizar la web con la LEC, el MSI u otro campeonato basta con añadir
 // una entrada con su leagueId y tournamentId de lolesports.
 
+/** Fase del torneo tal como la nombra la API de lolesports (slug del stage). */
+export type StageInfo = {
+  slug: "play_ins" | "swiss" | "knockouts";
+  name: string;
+  /** Ciudad, para el mapa de ruta */
+  city: string;
+  /** Recinto o recintos */
+  venue: string;
+  /** Formato en una frase */
+  format: string;
+};
+
 export type TournamentConfig = {
   /** Identificador en la URL */
   slug: string;
@@ -23,6 +35,8 @@ export type TournamentConfig = {
    * Worlddex y en la tabla aunque aún no tengan partidos.
    */
   teams?: string[];
+  /** Sedes y formato de cada fase, para el mapa del torneo */
+  stages?: StageInfo[];
 };
 
 export const TOURNAMENTS: TournamentConfig[] = [
@@ -48,6 +62,29 @@ export const TOURNAMENTS: TournamentConfig[] = [
       // CBLOL
       "los", "furia",
     ],
+    stages: [
+      {
+        slug: "play_ins",
+        name: "Play-In",
+        city: "Los Ángeles",
+        venue: "Riot Games Arena",
+        format: "4 equipos en doble eliminación al mejor de 5. Solo el campeón pasa a la fase suiza.",
+      },
+      {
+        slug: "swiss",
+        name: "Fase suiza",
+        city: "Allen (Texas)",
+        venue: "Credit Union of Texas Event Center",
+        format: "16 equipos. Con 3 victorias pasas y con 3 derrotas te vas. Al mejor de 1, y al mejor de 3 cuando hay plaza o eliminación en juego.",
+      },
+      {
+        slug: "knockouts",
+        name: "Eliminatorias",
+        city: "Allen · Nueva York",
+        venue: "Cuartos y semis en Allen, final en el Barclays Center de Brooklyn",
+        format: "8 equipos en eliminación directa al mejor de 5. Los 3-0 se cruzan con los 3-2 y los 3-1 se sortean entre sí.",
+      },
+    ],
   },
   {
     slug: "worlds-2025",
@@ -57,6 +94,29 @@ export const TOURNAMENTS: TournamentConfig[] = [
     tournamentId: "113475452383887518",
     start: "2025-10-13T00:00:00Z",
     end: "2025-11-10T00:00:00Z",
+    stages: [
+      {
+        slug: "play_ins",
+        name: "Play-In",
+        city: "Pekín",
+        venue: "Beijing Smart Esports Center",
+        format: "Un único cruce al mejor de 5 entre los cuartos de la LCK y la LPL.",
+      },
+      {
+        slug: "swiss",
+        name: "Fase suiza",
+        city: "Pekín",
+        venue: "Beijing Smart Esports Center",
+        format: "16 equipos. Con 3 victorias pasas y con 3 derrotas te vas.",
+      },
+      {
+        slug: "knockouts",
+        name: "Eliminatorias",
+        city: "Shanghái · Chengdú",
+        venue: "Cuartos y semis en el Mercedes-Benz Arena, final en Chengdú",
+        format: "8 equipos en eliminación directa al mejor de 5.",
+      },
+    ],
   },
 ];
 
