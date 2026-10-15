@@ -1,8 +1,8 @@
-"""Genera public/scene.svg: noche de final en el estanque, con la paleta de KOI.
+"""Genera public/scene.svg: noche de final junto al lago, con la paleta de KOI.
 
 Cielo azul marino que se aclara hasta el azul KOI en el horizonte, estrellas,
-un estadio con focos, el lago reflejando las luces y carpas koi blancas y azules
-nadando entre nenúfares. Todo en una rejilla de 480x270 "píxeles".
+un estadio con focos y el lago reflejando las luces entre nenúfares. Todo en
+una rejilla de 480x270 "píxeles".
 
 Uso: python3 scripts/gen-scene.py
 """
@@ -145,45 +145,6 @@ for (cx, cy, r) in [(30, 238, 5), (140, 226, 3), (236, 262, 4), (318, 232, 4), (
 for (cx, cy) in [(404, 249), (28, 235)]:
     for dx, dy, c in [(0, -2, WHITE), (-1, -1, ICE), (1, -1, ICE), (0, -1, WHITE), (-2, 0, KOI_LIGHT), (2, 0, KOI_LIGHT), (0, 0, GOLD)]:
         dot(cx + dx, cy + dy, c)
-
-# ---------- Carpas koi ----------
-KOI_ART = [
-    "..........KKKK",
-    ".........KBBBBK",
-    "..KK....KKWWWWKKKKK",
-    ".KBBK..KWWWBBBWWWWWKK",
-    "KBBBBKKWWWBBBBBWWWBBWK",
-    ".KBBBBWWWWWBBBWWWBBBWEK",
-    "KBBBBKKWWWWWWWWWWWWWWWWK",
-    ".KBBK..KWWWBBWWWWWWWWWK",
-    "..KK....KKWWWWWWWWKKKK",
-    ".........KBBK...KBBK",
-    "..........KK.....KK",
-]
-KOI_ART = [row.ljust(26, ".") for row in KOI_ART]
-
-
-def koi(x0, y0, body, spot, left=False):
-    colors = {"K": NAVY_1, "W": body, "B": spot, "E": NAVY_0}
-    for y, row in enumerate(KOI_ART):
-        for x, ch in enumerate(row[::-1] if left else row):
-            if ch in colors:
-                dot(x0 + x, y0 + y, colors[ch])
-    # estela
-    wx = x0 + (len(KOI_ART[0]) + 1 if left else -3)
-    for k in range(3):
-        dot(wx + (k * 2 if left else -k * 2), y0 + 5 + (k % 2), KOI if k == 0 else BLUE_1)
-
-
-for (x, y, body, spot, left) in [
-    (52, 212, WHITE, KOI, False),
-    (168, 240, WHITE, KOI, True),
-    (282, 214, GOLD, "#e8743b", False),
-    (346, 250, WHITE, KOI, True),
-    (430, 228, WHITE, BLUE_2, False),
-    (100, 248, WHITE, BLUE_2, True),
-]:
-    koi(x, y, body, spot, left)
 
 # Ondas en el agua
 for (cx, cy, r) in [(204, 234, 6), (380, 222, 5), (26, 256, 5), (300, 258, 4)]:
