@@ -125,10 +125,11 @@ export async function fetchTeamDetails(idOrSlug: string): Promise<TeamDetails | 
     region: t.homeLeague?.name ?? t.homeLeague?.region ?? null,
     players: (t.players ?? []).map((p: Json) => ({
       id: String(p.id),
-      name: p.summonerName ?? "",
-      realName: [p.firstName, p.lastName].filter(Boolean).join(" "),
+      name: (p.summonerName ?? "").trim(),
+      realName: [p.firstName, p.lastName].filter(Boolean).join(" ").trim(),
       role: p.role ?? "",
-      image: https(p.image),
+      // La foto genérica de lolesports no aporta nada: mejor el escudo del equipo.
+      image: /default-headshot/.test(p.image ?? "") ? "" : https(p.image),
     })),
   };
 }
