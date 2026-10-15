@@ -442,7 +442,7 @@ function damage(att: Fighter, def: Fighter, power: number, extraCrit = 0, mult =
   const res = att.champ.magic ? def.max.mr : def.max.ar;
   const tm = typeMult(att.champ.tags.includes("Monster") ? "Monster" : att.champ.cls, def.champ.tags.includes("Monster") ? "Monster" : def.champ.cls);
   const crit = rand() < att.max.crit + extraCrit;
-  const d = (power / 100) * stat * 5 * (100 / (100 + Math.max(0, res))) * tm * (crit ? 1.75 : 1) * (0.9 + rand() * 0.1) * mult;
+  const d = (power / 100) * stat * 7 * (100 / (100 + Math.max(0, res))) * tm * (crit ? 1.75 : 1) * (0.9 + rand() * 0.1) * mult;
   return { d: Math.max(1, Math.round(d)), tm, crit };
 }
 
