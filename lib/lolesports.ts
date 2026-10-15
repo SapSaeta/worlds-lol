@@ -23,6 +23,8 @@ async function api(path: string, params: Record<string, string>, revalidate: num
   return res.json();
 }
 
+const https = (url: string | undefined) => (url ?? "").replace(/^http:\/\//, "https://");
+
 function inWindow(iso: string) {
   const t = Date.parse(iso);
   return t >= Date.parse(TOURNAMENT.start) && t <= Date.parse(TOURNAMENT.end);
@@ -34,7 +36,7 @@ function toMatch(ev: Json): Match | null {
     (t: Json): MatchTeam => ({
       code: t.code ?? "TBD",
       name: t.name ?? "Por decidir",
-      image: t.image ?? "",
+      image: https(t.image),
       gameWins: t.result?.gameWins ?? 0,
       outcome: t.result?.outcome ?? null,
     }),
@@ -103,9 +105,9 @@ async function fetchTeamDetails(slug: string) {
     name: p.summonerName ?? "",
     realName: [p.firstName, p.lastName].filter(Boolean).join(" "),
     role: p.role ?? "",
-    image: p.image ?? "",
+    image: https(p.image),
   }));
-  return { code: t.code as string, region: (t.homeLeague?.region ?? t.homeLeague?.name ?? null) as string | null, players };
+  return { code: t.code as string, name: (t.name ?? t.code) as string, image: https(t.image), region: (t.homeLeague?.region ?? t.homeLeague?.name ?? null) as string | null, players };
 }
 
 export async function getWorldsData(): Promise<WorldsData> {
@@ -114,19 +116,34 @@ export async function getWorldsData(): Promise<WorldsData> {
     if (matches.length === 0) throw new Error("El calendario llegó vacío");
     const teams = buildTeams(matches);
 
+    const warnings: string[] = [];
+    const warn = (what: string) => (err: unknown) => {
+      warnings.push(`${what}: ${err instanceof Error ? err.message : String(err)}`);
+      return [];
+    };
     const [liveStreams, details] = await Promise.all([
-      fetchLiveStreams().catch(() => []),
+      fetchLiveStreams().catch(warn("directo")),
       fetchTeamSlugs()
-        .then((slugs) => Promise.allSettled(slugs.map(fetchTeamDetails)))
-        .catch(() => []),
+        .then((slugs) => {
+          if (!slugs.length) warnings.push("standings: sin equipos todavía");
+          return Promise.allSettled(slugs.map(fetchTeamDetails));
+        })
+        .catch(warn("standings")),
     ]);
     for (const d of details) {
-      if (d.status !== "fulfilled" || !d.value) continue;
-      const team = teams.find((t) => t.code === d.value!.code);
-      if (team) {
-        team.region = d.value.region;
-        team.players = d.value.players;
+      if (d.status === "rejected") {
+        warn("equipo")(d.reason);
+        continue;
       }
+      if (!d.value) continue;
+      let team = teams.find((t) => t.code === d.value!.code);
+      if (!team) {
+        // Equipos clasificados que aún no aparecen en el calendario.
+        team = { code: d.value.code, name: d.value.name, image: d.value.image, region: null, wins: 0, losses: 0, gameWins: 0, gameLosses: 0, form: [], players: [] };
+        teams.push(team);
+      }
+      team.region = d.value.region;
+      team.players = d.value.players;
     }
 
     return {
@@ -136,6 +153,7 @@ export async function getWorldsData(): Promise<WorldsData> {
       teams,
       matches,
       liveStreams,
+      warnings,
     };
   } catch (err) {
     return { ...demoData(), error: err instanceof Error ? err.message : String(err) };

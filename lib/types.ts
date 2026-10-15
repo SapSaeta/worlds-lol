@@ -52,4 +52,6 @@ export type WorldsData = {
   teams: Team[];
   matches: Match[];
   liveStreams: LiveStream[];
+  /** Fallos parciales de la API (no impiden mostrar datos) */
+  warnings?: string[];
 };
