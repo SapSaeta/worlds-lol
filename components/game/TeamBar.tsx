@@ -79,7 +79,7 @@ export function UnitSheet({ unit, run, data }: { unit: Unit; run: Run; data: Gam
       <ul className="g-moves-list">
         {movesOf(c).map((m) => (
           <li key={m.key}>
-            <span className="g-key">{m.key === "A" ? "AA" : m.key}</span> {m.name} <span className="muted">· {moveNote(m)}</span>
+            <span className="g-key">{m.key}</span> {m.name} <span className="muted">· {moveNote(m)}</span>
           </li>
         ))}
       </ul>

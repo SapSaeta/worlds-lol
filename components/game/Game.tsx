@@ -11,7 +11,7 @@ import { MapView } from "@/components/game/MapView";
 import { ShopView } from "@/components/game/ShopView";
 import { TeamBar } from "@/components/game/TeamBar";
 import { ChampSprite, Hp, PixelIcon, StatLine, TypeBadge } from "@/components/game/parts";
-import { drawCard, resultLine, shareText, toBlob, xIntent } from "@/components/game/share";
+import { drawCard, resultLine, resultSub, shareText, stageStates, telegramLink, toBlob, whatsappLink, xIntent, type CardFormat } from "@/components/game/share";
 import {
   DIFFICULTY,
   DRAKES,
@@ -60,7 +60,7 @@ type Screen =
   | { s: "stageClear"; from: number }
   | { s: "end" };
 
-const fmt = (n: number) => n.toLocaleString("es-ES");
+const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 
 export function Game({ data }: { data: GameData }) {
   const [screen, setScreen] = useState<Screen>({ s: "title" });
@@ -385,7 +385,7 @@ function StarterCard({ id, trainer, data, onPick }: { id: string; trainer: GPlay
       <ul className="g-moves-list">
         {movesOf(c).map((m) => (
           <li key={m.key}>
-            <span className="g-key">{m.key === "A" ? "AA" : m.key}</span> {m.name} <span className="muted">· {moveNote(m)}</span>
+            <span className="g-key">{m.key}</span> {m.name} <span className="muted">· {moveNote(m)}</span>
           </li>
         ))}
       </ul>
@@ -448,48 +448,149 @@ function Reward({ run, data, screen, onDone }: { run: Run; data: GameData; scree
   );
 }
 
-function End({ run, data, onAgain }: { run: Run; data: GameData; onAgain: () => void }) {
-  const [img, setImg] = useState<{ url: string; blob: Blob | null } | null>(null);
-  const [note, setNote] = useState("");
+type Card = { url: string; blob: Blob | null };
 
+function End({ run, data, onAgain }: { run: Run; data: GameData; onAgain: () => void }) {
+  const [format, setFormat] = useState<CardFormat>("square");
+  const [cards, setCards] = useState<Partial<Record<CardFormat, Card>>>({});
+  const [note, setNote] = useState("");
+  const [url, setUrl] = useState("https://worlddex.lol/jugar");
+  const text = shareText(run);
+  const card = cards[format];
+
+  // Se dibujan las dos tarjetas: la cuadrada para posts y la vertical para historias.
   useEffect(() => {
     let alive = true;
-    drawCard(run, data)
-      .then(async (canvas) => {
+    setUrl(`${location.origin}/jugar`);
+    (async () => {
+      for (const f of ["square", "story"] as CardFormat[]) {
+        const canvas = await drawCard(run, data, f);
         const blob = await toBlob(canvas).catch(() => null);
-        if (alive) setImg({ url: canvas.toDataURL("image/png"), blob });
-      })
-      .catch(() => alive && setNote("No se ha podido generar la imagen."));
+        if (alive) setCards((c) => ({ ...c, [f]: { url: canvas.toDataURL("image/png"), blob } }));
+      }
+    })().catch(() => alive && setNote("No se ha podido generar la imagen."));
     return () => {
       alive = false;
     };
   }, [run, data]);
 
-  const share = async () => {
-    const url = `${location.origin}/jugar`;
-    const file = img?.blob ? new File([img.blob], "camino-a-la-copa.png", { type: "image/png" }) : null;
+  const fileName = (f: CardFormat) => `camino-a-la-copa${f === "story" ? "-historia" : ""}.png`;
+  const fileOf = (f: CardFormat) => {
+    const b = cards[f]?.blob;
+    return b ? new File([b], fileName(f), { type: "image/png" }) : null;
+  };
+  /** Abre el menú de compartir del móvil con la imagen; false si el navegador no puede. */
+  const shareFile = async (f: CardFormat) => {
+    const file = fileOf(f);
+    if (!file || !navigator.canShare?.({ files: [file] })) return false;
     try {
-      if (file && navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file], text: `${shareText(run)} ${url}` });
-      else if (navigator.share) await navigator.share({ text: shareText(run), url });
-      else {
-        await navigator.clipboard.writeText(`${shareText(run)} ${url}`);
-        setNote("Texto copiado. Descarga la imagen y súbela donde quieras.");
-      }
+      await navigator.share({ files: [file], text: `${text}\n${url}` });
     } catch {
       /* compartir cancelado */
     }
+    return true;
+  };
+  const copy = async (msg: string) => {
+    try {
+      await navigator.clipboard.writeText(`${text}\n${url}`);
+      setNote(msg);
+    } catch {
+      setNote("No se ha podido copiar el mensaje.");
+    }
+  };
+  const download = (f: CardFormat) => {
+    const c = cards[f];
+    if (!c) return;
+    const a = document.createElement("a");
+    a.href = c.url;
+    a.download = fileName(f);
+    a.click();
+  };
+
+  const shareMain = async () => {
+    if (await shareFile(format)) return;
+    if (navigator.share) {
+      try {
+        await navigator.share({ text, url });
+      } catch {
+        /* compartir cancelado */
+      }
+      return;
+    }
+    download(format);
+    await copy("Imagen descargada y mensaje copiado: pégalo donde quieras junto a la imagen.");
+  };
+  const shareStory = async (app: string) => {
+    setFormat("story");
+    if (await shareFile("story")) return;
+    download("story");
+    await copy(`Imagen de historia descargada y mensaje copiado: súbela a ${app} desde la app.`);
   };
 
   const champion = run.over === "champion";
   return (
     <div className="g-end">
-      <h1 className={`screen-title g-big${champion ? " gold" : ""}`}>{resultLine(run)}</h1>
+      <div className={`g-end-hero${champion ? " gold" : ""}`}>
+        <h1 className={`screen-title g-big${champion ? " gold" : ""}`}>{resultLine(run)}</h1>
+        <p className="g-end-sub">{resultSub(run)}</p>
+        <ol className="g-track" aria-label="Hasta dónde llegaste">
+          {stageStates(run).map((s, i) => (
+            <li key={STAGES[i].name} className={s}>
+              <span aria-hidden>{s === "won" ? "✓" : s === "lost" ? "✗" : "·"}</span>
+              {STAGES[i].name}
+            </li>
+          ))}
+        </ol>
+      </div>
       <div className="g-end-grid">
-        <div className="g-card-preview card">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          {img ? <img src={img.url} alt="Tu tarjeta de Camino a la Copa" /> : <span className="px-small muted">{note || "Dibujando tu tarjeta…"}</span>}
+        <div className="g-card-col">
+          <div className="g-format">
+            <button type="button" className="btn sm" aria-pressed={format === "square"} onClick={() => setFormat("square")}>
+              Post
+            </button>
+            <button type="button" className="btn sm" aria-pressed={format === "story"} onClick={() => setFormat("story")}>
+              Historia
+            </button>
+          </div>
+          <div className={`g-card-preview card ${format}`}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {card ? <img src={card.url} alt="Tu tarjeta de Camino a la Copa" /> : <span className="px-small muted">{note || "Dibujando tu tarjeta…"}</span>}
+          </div>
+          <button type="button" className="btn" onClick={() => download(format)} disabled={!card}>
+            Descargar imagen
+          </button>
         </div>
-        <div className="g-end-side">
+        <div className="g-end-side g-share-box">
+          <button type="button" className="btn g-share-main" onClick={shareMain} disabled={!card}>
+            ¡Presume de resultado!
+          </button>
+          <div className="g-share">
+            <a className="btn s-x" href={xIntent(run, url)} target="_blank" rel="noopener noreferrer">
+              X (Twitter)
+            </a>
+            <a className="btn s-wa" href={whatsappLink(run, url)} target="_blank" rel="noopener noreferrer">
+              WhatsApp
+            </a>
+            <a className="btn s-tg" href={telegramLink(run, url)} target="_blank" rel="noopener noreferrer">
+              Telegram
+            </a>
+            <button type="button" className="btn s-ig" onClick={() => shareStory("Instagram")} disabled={!cards.story}>
+              Instagram
+            </button>
+            <button type="button" className="btn s-tt" onClick={() => shareStory("TikTok")} disabled={!cards.story}>
+              TikTok
+            </button>
+            <button type="button" className="btn" onClick={() => copy("¡Mensaje copiado! Pégalo donde quieras.")}>
+              Copiar mensaje
+            </button>
+          </div>
+          {note && card ? <p className="px-small g-note">{note}</p> : null}
+        </div>
+        <div className="g-end-side g-end-info">
+          <div className="g-msg card">
+            <div className="px-small muted">Tu mensaje</div>
+            <p>{text}</p>
+          </div>
           <div className="g-score card">
             <div className="px-small muted">Puntos</div>
             <div className="g-score-num">{fmt(score(run))}</div>
@@ -507,22 +608,11 @@ function End({ run, data, onAgain }: { run: Run; data: GameData; onAgain: () => 
               {champion ? <li>Campeón del mundo: 5.000</li> : null}
             </ul>
           </div>
-          <div className="g-share">
-            <button type="button" className="btn" onClick={share} disabled={!img}>
-              Compartir
-            </button>
-            <a className="btn" href={xIntent(run, typeof location !== "undefined" ? `${location.origin}/jugar` : "https://worlddex.lol/jugar")} target="_blank" rel="noopener noreferrer">
-              Publicar en X
-            </a>
-            <a className={`btn${img ? "" : " off"}`} href={img?.url} download="camino-a-la-copa.png" aria-disabled={!img}>
-              Descargar imagen
-            </a>
+          <div className="g-actions-row">
             <button type="button" className="btn" onClick={onAgain}>
               Jugar otra vez
             </button>
           </div>
-          {note && img ? <p className="px-small muted">{note}</p> : null}
-          <p className="px-small muted">Para Instagram o TikTok, comparte desde el móvil o descarga la imagen y súbela desde la app.</p>
         </div>
       </div>
       <TeamBar run={run} data={data} />

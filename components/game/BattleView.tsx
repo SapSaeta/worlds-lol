@@ -95,6 +95,50 @@ export function BattleView({ battle, onAction, onDone }: { battle: Battle; onAct
 
   const listOpen = battle.mustSwitch || switching;
   const foeCls = foe.champ.tags.includes("Monster") ? null : foe.champ.cls;
+  const canSwitch = battle.mine.filter((f) => f.hp > 0).length >= 2;
+
+  // Teclado: Q W E R para las habilidades, A para el ataque básico, C para
+  // cambiar (1-5 eligen) y Espacio o Intro para pasar el texto o continuar.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+      const k = e.key.toLowerCase();
+      const skip = k === " " || k === "enter";
+      if (busy) {
+        if (skip || "qwerac".includes(k)) {
+          e.preventDefault();
+          setShown(battle.log.length);
+        }
+        return;
+      }
+      if (battle.result) {
+        if (skip) {
+          e.preventDefault();
+          onDone();
+        }
+        return;
+      }
+      if (listOpen) {
+        const i = Number(k) - 1;
+        const f = battle.mine[i];
+        if (f && f.hp > 0 && i !== battle.a) onAction({ type: "switch", to: i });
+        else if (k === "escape" && !battle.mustSwitch) setSwitching(false);
+        return;
+      }
+      const key = k === "a" ? "A" : k.length === 1 && "qwer".includes(k) ? k.toUpperCase() : null;
+      if (key) {
+        const m = movesOf(me.champ).find((x) => x.key === key);
+        if (m && !(me.cd[m.key] ?? 0)) {
+          e.preventDefault();
+          onAction({ type: "move", key: m.key });
+        }
+      } else if (k === "c" && canSwitch) setSwitching(true);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [battle, busy, listOpen, me, canSwitch, onAction, onDone]);
   const arena = battle.kind === "boss" ? "nexo" : battle.kind === "objective" ? "foso" : "jungla";
 
   return (
@@ -150,6 +194,7 @@ export function BattleView({ battle, onAction, onDone }: { battle: Battle; onAct
             <button key={f.unit.uid} type="button" className="g-switch-btn card" disabled={busy || f.hp <= 0 || i === battle.a} onClick={() => onAction({ type: "switch", to: i })}>
               <ChampSprite champ={f.champ} size={32} />
               <span className="g-switch-name">
+                <span className="g-key kbd-only">{i + 1}</span>{" "}
                 {f.champ.name} <span className="g-lv">Nv {f.unit.level}</span>
               </span>
               <Hp hp={f.hp} max={f.max.hp} />
@@ -179,7 +224,7 @@ export function BattleView({ battle, onAction, onDone }: { battle: Battle; onAct
                 {m.icon ? <img src={m.icon} alt="" width={36} height={36} loading="lazy" /> : <PixelIcon name="fight" size={36} />}
                 <span className="g-move-text">
                   <span className="g-move-name">
-                    <span className="g-key">{m.key === "A" ? "AA" : m.key}</span> {m.name}
+                    <span className="g-key">{m.key}</span> {m.name}
                   </span>
                   <span className="px-small muted g-move-note">{moveNote(m)}</span>
                   <span className="px-small g-move-dmg">
@@ -200,14 +245,15 @@ export function BattleView({ battle, onAction, onDone }: { battle: Battle; onAct
               </button>
             );
           })}
-          <button type="button" className="btn sm g-switch-open" disabled={busy || battle.mine.filter((f) => f.hp > 0).length < 2} onClick={() => setSwitching(true)}>
-            Cambiar
+          <button type="button" className="btn sm g-switch-open" disabled={busy || !canSwitch} onClick={() => setSwitching(true)}>
+            Cambiar <span className="kbd-only muted">(C)</span>
           </button>
           {foeCls ? (
             <span className="px-small muted g-matchup">
               {CLS_LABEL[me.champ.cls]} contra {CLS_LABEL[foeCls]}
             </span>
           ) : null}
+          <span className="px-small muted g-keys-hint kbd-only">Teclado: Q W E R habilidades · A ataque básico · C cambiar · Espacio pasa el texto</span>
         </div>
       )}
     </div>
