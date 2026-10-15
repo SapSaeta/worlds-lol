@@ -961,6 +961,21 @@ button {
 
 /* ---------- Worlddex ---------- */
 
+.dex-summary {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  width: fit-content;
+  margin: 14px auto 0;
+  padding: 8px 14px 7px;
+  font-family: var(--font-pixel);
+  font-size: 9px;
+  color: #f9d97c;
+  background: var(--slate);
+  border: var(--b) solid var(--line);
+}
+
 .tour-switch,
 .dex-tabs {
   display: flex;

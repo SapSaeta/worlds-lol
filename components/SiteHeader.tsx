@@ -29,7 +29,7 @@ export function SiteHeader() {
       <NextMatchChip />
       <nav className="nav">
         {LINKS.map((l) => (
-          <Link key={l.href} href={l.href} className="btn" aria-current={path === l.href ? "page" : undefined}>
+          <Link key={l.href} href={l.href} className="btn" aria-current={path === l.href || (l.href !== "/" && path.startsWith(`${l.href}/`)) ? "page" : undefined}>
             {l.label}
           </Link>
         ))}

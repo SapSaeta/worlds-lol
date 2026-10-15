@@ -35,8 +35,13 @@ export function Worlddex({ stats, teams, ongoing, tournaments }: { stats: StatsD
   const [tab, setTab] = useState<TabId>("equipos");
 
   useEffect(() => {
-    const h = location.hash.slice(1);
-    if (TABS.some((t) => t.id === h)) setTab(h as TabId);
+    const fromHash = () => {
+      const h = location.hash.slice(1);
+      if (TABS.some((t) => t.id === h)) setTab(h as TabId);
+    };
+    fromHash();
+    window.addEventListener("hashchange", fromHash);
+    return () => window.removeEventListener("hashchange", fromHash);
   }, []);
 
   const choose = (id: TabId) => {
@@ -49,9 +54,12 @@ export function Worlddex({ stats, teams, ongoing, tournaments }: { stats: StatsD
   return (
     <div className="page">
       <h1 className="screen-title">¡Worlddex!</h1>
-      <p className="screen-subtitle">
-        {stats.tournament.name} · {stats.totalGames} partidas · {played} jugadores · {stats.champions.length} campeones
-      </p>
+      <p className="screen-subtitle">{stats.tournament.name}</p>
+      <div className="dex-summary">
+        <span>{stats.totalGames} partidas</span>
+        <span>{played} jugadores</span>
+        <span>{stats.champions.length} campeones</span>
+      </div>
 
       {tournaments.length > 1 ? (
         <nav className="tour-switch" aria-label="Torneo">

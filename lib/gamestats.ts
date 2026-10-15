@@ -25,6 +25,8 @@ type Participant = {
 type GameRecord = {
   gameId: string;
   winnerTeamId: string | null;
+  /** El ganador se dedujo sin ver el fotograma final */
+  uncertain: boolean;
   participants: Participant[];
 };
 
@@ -121,19 +123,18 @@ async function finalMoment(gameId: string, firstFrame: number, hint: number | nu
       if (w && finished(w)) return { w, ms: hint + off };
     }
   }
+  // Bisección entre el inicio y 90 minutos después: el último momento con datos es el final.
   let lo = firstFrame;
-  let hi = firstFrame + 80 * 60_000;
+  let hi = firstFrame + 90 * 60_000;
   let best: { w: Json; ms: number } | null = null;
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < 14 && hi - lo > 10_000; i++) {
     const mid = (lo + hi) / 2;
     const w = await at(mid);
-    if (!w) {
-      hi = mid;
-      continue;
-    }
-    best = { w, ms: mid };
-    if (finished(w)) break;
-    lo = mid;
+    if (w && finished(w)) return { w, ms: mid };
+    if (w) {
+      best = { w, ms: mid };
+      lo = mid;
+    } else hi = mid;
   }
   return best;
 }
@@ -151,8 +152,9 @@ async function loadGame(game: Json): Promise<GameRecord | null> {
   const blueId = String(meta.blueTeamMetadata?.esportsTeamId ?? "");
   const redId = String(meta.redTeamMetadata?.esportsTeamId ?? "");
   let winnerTeamId: string | null = null;
+  // Gana quien más torres e inhibidores ha tirado en el último fotograma (el nexo cae al final).
   const last = end?.w.frames.at(-1);
-  if (last?.gameState === "finished") {
+  if (last) {
     const score = (t: Json) => (t?.towers ?? 0) * 100 + (t?.inhibitors ?? 0) * 10 + (t?.totalKills ?? 0) / 100;
     winnerTeamId = score(last.blueTeam) >= score(last.redTeam) ? blueId : redId;
   }
@@ -182,14 +184,15 @@ async function loadGame(game: Json): Promise<GameRecord | null> {
       });
     }
   }
-  return { gameId, winnerTeamId, participants };
+  return { gameId, winnerTeamId, uncertain: last?.gameState !== "finished", participants };
 }
 
 /** Partidas terminadas del torneo. */
 async function loadGames(t: TournamentConfig, warnings: string[]) {
   const matches = (await fetchSchedule(t)).filter((m) => m.state === "completed");
   const events = await mapLimit(matches, 6, (m) => api("getEventDetails", { id: m.id }, false));
-  const games: Json[] = [];
+  const games: { game: Json; match: number }[] = [];
+  const results: Map<string, number>[] = [];
   const teamIds = new Set<string>();
   for (const e of events) {
     if (e.status === "rejected") {
@@ -197,16 +200,44 @@ async function loadGames(t: TournamentConfig, warnings: string[]) {
       continue;
     }
     const match = e.value.data?.event?.match;
-    for (const team of match?.teams ?? []) if (team.id) teamIds.add(String(team.id));
-    for (const g of match?.games ?? []) if (g.state === "completed") games.push(g);
+    const wins = new Map<string, number>();
+    for (const team of match?.teams ?? []) {
+      if (!team.id) continue;
+      teamIds.add(String(team.id));
+      wins.set(String(team.id), team.result?.gameWins ?? 0);
+    }
+    results.push(wins);
+    for (const g of match?.games ?? []) if (g.state === "completed") games.push({ game: g, match: results.length - 1 });
   }
-  const loaded = await mapLimit(games, 6, loadGame);
-  const records: GameRecord[] = [];
-  for (const r of loaded) {
-    if (r.status === "fulfilled" && r.value) records.push(r.value);
-    else if (r.status === "rejected") warnings.push(`partida: ${String(r.reason)}`);
+  const loaded = await mapLimit(games, 6, ({ game }) => loadGame(game));
+  const byMatch = new Map<number, GameRecord[]>();
+  for (const [i, r] of loaded.entries()) {
+    if (r.status === "rejected") warnings.push(`partida: ${String(r.reason)}`);
+    if (r.status !== "fulfilled" || !r.value) continue;
+    const m = games[i].match;
+    byMatch.set(m, [...(byMatch.get(m) ?? []), r.value]);
   }
-  return { records, teamIds };
+  // El resultado oficial de la serie manda: corrige o completa los ganadores deducidos.
+  for (const [m, records] of byMatch) checkWinners(records, results[m]);
+  return { records: [...byMatch.values()].flat(), teamIds };
+}
+
+function checkWinners(records: GameRecord[], wins: Map<string, number>) {
+  const total = [...wins.values()].reduce((a, b) => a + b, 0);
+  if (total !== records.length) return;
+  const count = (id: string) => records.filter((r) => r.winnerTeamId === id).length;
+  if ([...wins].every(([id, w]) => count(id) === w)) return;
+  if (records.length === 1) {
+    records[0].winnerTeamId = [...wins].find(([, w]) => w === 1)?.[0] ?? null;
+    return;
+  }
+  // Si solo falla una partida, se le asigna la victoria que falta.
+  const missing = [...wins].filter(([id, w]) => count(id) < w);
+  const extra = [...wins].filter(([id, w]) => count(id) > w);
+  if (missing.length === 1 && missing[0][1] - count(missing[0][0]) === 1) {
+    const wrong = records.find((r) => r.winnerTeamId === null || (extra.length === 1 && r.winnerTeamId === extra[0][0] && r.uncertain));
+    if (wrong) wrong.winnerTeamId = missing[0][0];
+  }
 }
 
 export async function getStats(t: TournamentConfig = TOURNAMENT): Promise<StatsData> {
@@ -244,6 +275,10 @@ async function buildStats(t: TournamentConfig): Promise<StatsData> {
 
   const ddByLower = new Map(Object.values(dd).map((c) => [c.id.toLowerCase(), c]));
   const champOf = (id: string): Champion | undefined => dd[id] ?? ddByLower.get(id.toLowerCase());
+
+  // Fotos y nombres reales de las plantillas oficiales, también para torneos pasados.
+  const roster = new Map<string, TeamDetails["players"][number]>();
+  for (const team of teams.values()) for (const p of team.players) roster.set(p.id, p);
 
   const champs = new Map<string, ChampStat & { _players: Map<string, { name: string; teamCode: string; games: number }> }>();
   const players = new Map<string, PlayerStat & { _champs: Map<string, { games: number; wins: number }> }>();
@@ -306,11 +341,12 @@ async function buildStats(t: TournamentConfig): Promise<StatsData> {
       let ps = players.get(p.playerId);
       if (!ps) {
         const prefix = team ? new RegExp(`^${team.code}\\s+`, "i") : /^$/;
+        const known = roster.get(p.playerId);
         ps = {
           id: p.playerId,
-          name: p.name.replace(prefix, ""),
-          realName: "",
-          image: "",
+          name: known?.name || p.name.replace(prefix, ""),
+          realName: known?.realName ?? "",
+          image: known?.image ?? "",
           teamCode: team?.code ?? "",
           teamName: team?.name ?? "",
           teamImage: team?.image ?? "",
