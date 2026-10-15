@@ -1,10 +1,77 @@
-// Tarjeta final para compartir: se dibuja en un canvas de 1080x1080 con el
-// entrenador, el equipo y la puntuación, y se comparte o se descarga.
+// Lo que se comparte al acabar: el mensaje (con emojis y la ruta por fases,
+// al estilo de Wordle) y una tarjeta dibujada en canvas, cuadrada para posts
+// o vertical para historias de Instagram y TikTok.
 
 import { STAGES, score, type Run } from "@/lib/game/engine";
 import type { GameData } from "@/lib/game/types";
 
-const SIZE = 1080;
+export type CardFormat = "square" | "story";
+
+const W = 1080;
+const HEIGHT: Record<CardFormat, number> = { square: 1080, story: 1920 };
+
+/** 7.023 con punto de miles también en números de cuatro cifras. */
+const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+
+const pl = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+/** La fuente pixel no trae mayúsculas con tilde: en los titulares van sin ella. */
+const plain = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").normalize("NFC");
+
+const STAGE_SHORT = ["PLAY-IN", "SUIZA", "CUARTOS", "SEMIS", "FINAL"];
+
+/** Titular del resultado, de más amargo a más épico. */
+const HEADLINES = ["Fuera en el Play-In", "Eliminado en la fase suiza", "Caído en cuartos", "¡Me quedé en semis!", "¡A un paso de la copa!"];
+const EMOJI = ["😭", "💀", "⚔️", "🔥", "😱"];
+
+export function resultLine(run: Run) {
+  return run.over === "champion" ? "¡CAMPEÓN DEL MUNDO!" : (HEADLINES[run.stage] ?? `Eliminado en ${STAGES[run.stage].name}`);
+}
+
+/** Quién te eliminó y dónde, o cómo ganaste. */
+const WHERE = ["en el Play-In", "en la fase suiza", "en cuartos", "en semis", "en la Final"];
+
+export function resultSub(run: Run) {
+  if (run.over === "champion") return `Sin perder ni un combate, con ${run.trainer.name} (${run.trainer.team})`;
+  const where = WHERE[run.stage] ?? `en ${STAGES[run.stage].name}`;
+  return run.killer ? `${run.killer} me eliminó ${where}` : `Eliminado ${where}`;
+}
+
+/** Hasta dónde llegaste, fase a fase: ganada, perdida o sin jugar. */
+export function stageStates(run: Run): ("won" | "lost" | "none")[] {
+  return STAGES.map((_, i) => (i < run.stage || run.over === "champion" ? "won" : i === run.stage ? "lost" : "none"));
+}
+
+export function stageTrack(run: Run) {
+  const squares = stageStates(run)
+    .map((s) => (s === "won" ? "🟩" : s === "lost" ? "🟥" : "⬛"))
+    .join("");
+  return run.over === "champion" ? `${squares}🏆` : squares;
+}
+
+export function shareText(run: Run) {
+  const champion = run.over === "champion";
+  const head = champion ? "🏆 ¡CAMPEÓN DEL MUNDO! 🏆" : `${EMOJI[run.stage] ?? "💀"} ${resultLine(run).toUpperCase()}`;
+  const what = champion ? "He ganado el Mundial sin perder ni un solo combate 😤" : `${resultSub(run)}.`;
+  const close = champion ? "Camino a la Copa: una sola vida y casi nadie lo consigue. ¿Te atreves? 👇" : "Camino a la Copa: una sola vida. ¿Llegas tú más lejos? 👇";
+  return [
+    head,
+    "",
+    what,
+    `${stageTrack(run)}  ${fmt(score(run))} puntos`,
+    `⚔️ ${pl(run.wins, "combate")} · 🐉 ${pl(run.objectives, "objetivo")} · 👑 ${run.bosses} ${run.bosses === 1 ? "jefe" : "jefes"}`,
+    `🎮 Entrenador: ${run.trainer.name} (${run.trainer.team})`,
+    "",
+    close,
+    "#Worlds2026",
+  ].join("\n");
+}
+
+export const xIntent = (run: Run, url: string) => `https://x.com/intent/post?text=${encodeURIComponent(shareText(run))}&url=${encodeURIComponent(url)}`;
+export const whatsappLink = (run: Run, url: string) => `https://wa.me/?text=${encodeURIComponent(`${shareText(run)}\n${url}`)}`;
+export const telegramLink = (run: Run, url: string) => `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(shareText(run))}`;
+
+// ---------- Tarjeta ----------
 
 function load(src: string, proxy = true): Promise<HTMLImageElement | null> {
   return new Promise((resolve) => {
@@ -29,95 +96,212 @@ function pixelated(ctx: CanvasRenderingContext2D, img: HTMLImageElement, x: numb
   ctx.drawImage(tmp, x, y, size, size);
 }
 
-function box(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, fill = "#e7e4d9") {
-  ctx.fillStyle = "#2b66a8";
+function box(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, fill = "#e7e4d9", shadow = "#2b66a8") {
+  ctx.fillStyle = shadow;
   ctx.fillRect(x + 12, y + 12, w, h);
   ctx.fillStyle = fill;
   ctx.fillRect(x, y, w, h);
   ctx.lineWidth = 6;
-  ctx.strokeStyle = "#2a2a2a";
+  ctx.strokeStyle = "#1e1e1e";
   ctx.strokeRect(x + 3, y + 3, w - 6, h - 6);
 }
 
-function text(ctx: CanvasRenderingContext2D, s: string, x: number, y: number, size: number, color: string, font = "Press Start 2P", align: CanvasTextAlign = "left") {
-  ctx.font = `${size}px "${font}"`;
-  ctx.textAlign = align;
+type TextOpts = { font?: string; align?: CanvasTextAlign; outline?: number; shadow?: number };
+
+function text(ctx: CanvasRenderingContext2D, s: string, x: number, y: number, size: number, color: string, o: TextOpts = {}) {
+  ctx.font = `${size}px "${o.font ?? "Press Start 2P"}"`;
+  ctx.textAlign = o.align ?? "left";
   ctx.textBaseline = "top";
+  if (o.shadow) {
+    ctx.fillStyle = "#1e1e1e";
+    ctx.fillText(s, x + o.shadow, y + o.shadow);
+  }
+  if (o.outline) {
+    ctx.lineJoin = "miter";
+    ctx.lineWidth = o.outline;
+    ctx.strokeStyle = "#1e1e1e";
+    ctx.strokeText(s, x, y);
+  }
   ctx.fillStyle = color;
   ctx.fillText(s, x, y);
 }
 
-export function resultLine(run: Run) {
-  return run.over === "champion" ? "¡CAMPEÓN DEL MUNDO!" : `Eliminado en ${STAGES[run.stage].name}`;
+/** Texto centrado que se encoge hasta caber en el ancho dado. */
+function fit(ctx: CanvasRenderingContext2D, s: string, y: number, size: number, maxW: number, color: string, o: TextOpts = {}) {
+  let px = size;
+  ctx.font = `${px}px "${o.font ?? "Press Start 2P"}"`;
+  while (px > 12 && ctx.measureText(s).width > maxW) {
+    px -= 2;
+    ctx.font = `${px}px "${o.font ?? "Press Start 2P"}"`;
+  }
+  text(ctx, s, W / 2, y, px, color, { ...o, align: "center" });
+  return px;
 }
 
-export async function drawCard(run: Run, data: GameData): Promise<HTMLCanvasElement> {
-  await Promise.all([document.fonts.load('40px "Press Start 2P"'), document.fonts.load('40px "VT323"')]).catch(() => null);
-  const canvas = document.createElement("canvas");
-  canvas.width = SIZE;
-  canvas.height = SIZE;
-  const ctx = canvas.getContext("2d")!;
+/** Rayos de luz detrás del titular, en bloques pixelados. */
+function rays(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, color: string) {
+  ctx.save();
+  ctx.globalAlpha = 0.18;
+  ctx.fillStyle = color;
+  const n = 18;
+  for (let i = 0; i < n; i += 2) {
+    const a0 = (i / n) * Math.PI * 2;
+    const a1 = ((i + 1) / n) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + Math.cos(a0) * r, cy + Math.sin(a0) * r);
+    ctx.lineTo(cx + Math.cos(a1) * r, cy + Math.sin(a1) * r);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
+}
 
-  // Fondo: la escena de la web
+/** Parte un titular en líneas que quepan con la fuente pixel. */
+function lines(ctx: CanvasRenderingContext2D, s: string, size: number, maxW: number) {
+  ctx.font = `${size}px "Press Start 2P"`;
+  const out: string[] = [];
+  let cur = "";
+  for (const w of s.split(" ")) {
+    const next = cur ? `${cur} ${w}` : w;
+    if (ctx.measureText(next).width > maxW && cur) {
+      out.push(cur);
+      cur = w;
+    } else cur = next;
+  }
+  if (cur) out.push(cur);
+  return out;
+}
+
+/** Medidas de cada formato: cuadrado para posts, vertical para historias. */
+const LAYOUT = {
+  square: { top: 40, title: 30, afterTitle: 56, head: 60, headGap: 22, cup: 110, rays: 640, sub: 44, afterSub: 70, cellH: 70, afterTrack: 32, boxH: 274, photo: 104, name: 56, team: 34, iconY: 146, icon: 88, iconName: 28, afterBox: 30, scoreH: 112, score: 58, cta: 96, ctaBottom: 0 },
+  story: { top: 110, title: 40, afterTitle: 90, head: 76, headGap: 26, cup: 220, rays: 900, sub: 52, afterSub: 110, cellH: 104, afterTrack: 60, boxH: 430, photo: 150, name: 72, team: 42, iconY: 200, icon: 150, iconName: 34, afterBox: 60, scoreH: 200, score: 84, cta: 150, ctaBottom: 80 },
+};
+
+export async function drawCard(run: Run, data: GameData, format: CardFormat = "square"): Promise<HTMLCanvasElement> {
+  await Promise.all([document.fonts.load('40px "Press Start 2P"'), document.fonts.load('40px "VT323"')]).catch(() => null);
+  const H = HEIGHT[format];
+  const L = LAYOUT[format];
+  const story = format === "story";
+  const canvas = document.createElement("canvas");
+  canvas.width = W;
+  canvas.height = H;
+  let ctx = canvas.getContext("2d")!;
+  const champion = run.over === "champion";
+  const accent = champion ? "#f8d860" : run.stage >= 3 ? "#ff8a3d" : "#ff5a5a";
+
+  // Fondo: la escena de la web, algo oscurecida para que resalte el texto
   ctx.fillStyle = "#081429";
-  ctx.fillRect(0, 0, SIZE, SIZE);
-  const scene = await load("/scene.svg", false);
+  ctx.fillRect(0, 0, W, H);
+  const [scene, cup] = await Promise.all([load("/scene.svg", false), load("/logo.svg", false)]);
   if (scene) {
     ctx.imageSmoothingEnabled = false;
-    const h = SIZE;
-    const w = (scene.naturalWidth / scene.naturalHeight) * h;
-    ctx.drawImage(scene, (SIZE - w) / 2, 0, w, h);
+    const w = (scene.naturalWidth / scene.naturalHeight) * H;
+    ctx.drawImage(scene, (W - w) / 2, 0, w, H);
   }
+  ctx.fillStyle = "rgba(8, 20, 41, 0.35)";
+  ctx.fillRect(0, 0, W, H);
+  const base = ctx;
+  // El contenido se dibuja en una capa aparte para centrarlo luego en el hueco libre.
+  const layer = document.createElement("canvas");
+  layer.width = W;
+  layer.height = H;
+  ctx = layer.getContext("2d")!;
 
-  text(ctx, "CAMINO A LA COPA", SIZE / 2 + 4, 64, 46, "#1e1e1e", undefined, "center");
-  text(ctx, "CAMINO A LA COPA", SIZE / 2, 60, 46, "#f8d860", undefined, "center");
-  text(ctx, resultLine(run), SIZE / 2, 140, 26, run.over === "champion" ? "#f8d860" : "#8cc2f7", undefined, "center");
+  let y = L.top;
+  text(ctx, "CAMINO A LA COPA", W / 2, y, L.title, "#8cc2f7", { align: "center", shadow: 4 });
+  y += L.afterTitle;
 
-  // Entrenador
-  box(ctx, 80, 210, SIZE - 160, 230);
+  // Titular con rayos detrás, y la copa si eres campeón
+  const head = lines(ctx, plain(resultLine(run).toUpperCase()), L.head, W - 120);
+  const cupSize = champion && cup ? L.cup : 0;
+  rays(ctx, W / 2, y + (cupSize + head.length * (L.head + L.headGap)) / 2, L.rays, accent);
+  if (cup && cupSize) {
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(cup, (W - cupSize) / 2, y, cupSize, cupSize);
+    y += cupSize + 12;
+  }
+  for (const l of head) {
+    fit(ctx, l, y, L.head, W - 100, accent, { outline: 14, shadow: 8 });
+    y += L.head + L.headGap;
+  }
+  fit(ctx, resultSub(run), y + 2, L.sub, W - 140, "#ffffff", { font: "VT323", shadow: 3 });
+  y += L.afterSub;
+
+  // Ruta por fases
+  const gap = 14;
+  const cell = (W - 160 - gap * 4) / 5;
+  stageStates(run).forEach((s, i) => {
+    const x = 80 + i * (cell + gap);
+    const ink = s === "none" ? "#5a6478" : "#ffffff";
+    ctx.fillStyle = "#1e1e1e";
+    ctx.fillRect(x + 6, y + 6, cell, L.cellH);
+    ctx.fillStyle = s === "won" ? "#3fa34d" : s === "lost" ? "#d04040" : "#2a3446";
+    ctx.fillRect(x, y, cell, L.cellH);
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = "#1e1e1e";
+    ctx.strokeRect(x + 2.5, y + 2.5, cell - 5, L.cellH - 5);
+    text(ctx, s === "won" ? "✓" : s === "lost" ? "✗" : "·", x + cell / 2, y + L.cellH * 0.1, L.cellH * 0.42, ink, { font: "VT323", align: "center" });
+    text(ctx, STAGE_SHORT[i], x + cell / 2, y + L.cellH * 0.68, story ? 15 : 12, ink, { align: "center" });
+  });
+  y += L.cellH + L.afterTrack;
+
+  // Entrenador y equipo
   const team = data.teams.find((t) => t.code === run.trainer.team);
+  box(ctx, 80, y, W - 160, L.boxH);
   const [photo, logo] = await Promise.all([load(run.trainer.image), load(team?.image ?? "")]);
-  if (photo) pixelated(ctx, photo, 112, 240, 168, 32);
-  else if (logo) pixelated(ctx, logo, 112, 240, 168, 32);
-  text(ctx, "ENTRENADOR", 312, 246, 18, "#4a4a44");
-  text(ctx, run.trainer.name, 312, 284, 64, "#1e1e1e", "VT323");
-  text(ctx, `${team?.name ?? run.trainer.team}`, 312, 352, 40, "#4a4a44", "VT323");
-  if (logo) pixelated(ctx, logo, SIZE - 80 - 32 - 120, 250, 120, 40);
-
-  // Equipo
-  box(ctx, 80, 480, SIZE - 160, 330);
-  text(ctx, "SU EQUIPO", 112, 512, 18, "#4a4a44");
+  const pic = photo ?? logo;
+  if (pic) pixelated(ctx, pic, 112, y + 28, L.photo, 32);
+  const tx = 112 + L.photo + 28;
+  text(ctx, "ENTRENADOR", tx, y + 34, story ? 18 : 15, "#4a4a44");
+  text(ctx, run.trainer.name, tx, y + 34 + (story ? 30 : 24), L.name, "#1e1e1e", { font: "VT323" });
+  text(ctx, team?.name ?? run.trainer.team, tx, y + 34 + (story ? 30 : 24) + L.name * 0.92, L.team, "#4a4a44", { font: "VT323" });
+  if (logo) pixelated(ctx, logo, W - 112 - L.photo * 0.8, y + 28, L.photo * 0.8, 40);
   const icons = await Promise.all(run.team.map((u) => load(data.champions[u.champ]?.icon ?? "")));
-  const slot = (SIZE - 160 - 64) / 5;
+  const slot = (W - 224) / 5;
   run.team.forEach((u, i) => {
     const c = data.champions[u.champ];
-    const x = 112 + i * slot;
-    const img = icons[i];
+    const x = 112 + i * slot + (slot - 24 - L.icon) / 2;
+    const iy = y + L.iconY;
     ctx.fillStyle = "#dcd8ca";
-    ctx.fillRect(x, 556, slot - 24, slot - 24);
-    if (img) pixelated(ctx, img, x, 556, slot - 24, 28);
+    ctx.fillRect(x, iy, L.icon, L.icon);
+    const img = icons[i];
+    if (img) pixelated(ctx, img, x, iy, L.icon, 28);
     ctx.lineWidth = 4;
-    ctx.strokeStyle = "#2a2a2a";
-    ctx.strokeRect(x, 556, slot - 24, slot - 24);
-    text(ctx, c?.name ?? u.champ, x + (slot - 24) / 2, 556 + slot - 12, 34, "#1e1e1e", "VT323", "center");
-    text(ctx, `Nv ${u.level}`, x + (slot - 24) / 2, 556 + slot + 22, 16, "#b89a30", undefined, "center");
+    ctx.strokeStyle = "#1e1e1e";
+    ctx.strokeRect(x, iy, L.icon, L.icon);
+    text(ctx, (c?.name ?? u.champ).slice(0, 10), x + L.icon / 2, iy + L.icon + 4, L.iconName, "#1e1e1e", { font: "VT323", align: "center" });
+    if (story) text(ctx, `Nv ${u.level}`, x + L.icon / 2, iy + L.icon + 42, 16, "#b89a30", { align: "center" });
   });
+  y += L.boxH + L.afterBox;
 
-  // Puntuación
-  box(ctx, 80, 850, SIZE - 160, 130, "#1f4c80");
-  text(ctx, "PUNTOS", 112, 890, 26, "#f9d97c");
-  text(ctx, score(run).toLocaleString("es-ES"), SIZE - 112, 880, 52, "#f8d860", undefined, "right");
-  text(ctx, "worlddex.lol/jugar", SIZE / 2, 1020, 22, "#8cc2f7", undefined, "center");
+  // Puntos y resumen
+  box(ctx, 80, y, W - 160, L.scoreH, "#1f4c80", "#0d2a4d");
+  text(ctx, "PUNTOS", 116, y + (story ? 40 : 28), story ? 26 : 20, "#f9d97c");
+  text(ctx, fmt(score(run)), W - 116, y + (story ? 26 : 22), L.score, "#f8d860", { align: "right", shadow: 6 });
+  const stats = `${pl(run.wins, "combate")} · ${pl(run.objectives, "objetivo")} · ${run.bosses} ${run.bosses === 1 ? "jefe" : "jefes"}`;
+  if (story) text(ctx, stats, W / 2, y + 140, 44, "#cfe4ff", { font: "VT323", align: "center" });
+  else text(ctx, stats, 116, y + 64, 32, "#cfe4ff", { font: "VT323" });
+  y += L.scoreH + 12;
+
+  // Reto: franja amarilla abajo; el contenido se centra en lo que queda encima
+  const cy = H - L.cta - L.ctaBottom;
+  const shift = Math.max(0, Math.floor((cy - 6 - y) / 2));
+  base.drawImage(layer, 0, shift);
+  ctx = base;
+  ctx.fillStyle = "#1e1e1e";
+  ctx.fillRect(0, cy - 6, W, L.cta + 12);
+  ctx.fillStyle = "#f8d860";
+  ctx.fillRect(0, cy, W, L.cta);
+  if (story) {
+    text(ctx, "¿ME SUPERAS?", W / 2, cy + 26, 44, "#1e1e1e", { align: "center" });
+    text(ctx, "worlddex.lol/jugar", W / 2, cy + 88, 30, "#1e1e1e", { align: "center" });
+  } else {
+    text(ctx, "¿ME SUPERAS?", 60, cy + 33, 30, "#1e1e1e");
+    text(ctx, "worlddex.lol/jugar", W - 60, cy + 37, 22, "#1e1e1e", { align: "right" });
+  }
   return canvas;
 }
 
 export const toBlob = (canvas: HTMLCanvasElement) => new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
-
-export function shareText(run: Run) {
-  const where = run.over === "champion" ? "¡he ganado el Mundial" : `he llegado a ${STAGES[run.stage].name}`;
-  return `En Camino a la Copa ${where} con ${run.trainer.name} (${run.trainer.team}): ${score(run).toLocaleString("es-ES")} puntos. ¿Me superas?`;
-}
-
-export function xIntent(run: Run, url: string) {
-  return `https://x.com/intent/post?text=${encodeURIComponent(shareText(run))}&url=${encodeURIComponent(url)}`;
-}

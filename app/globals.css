@@ -3082,3 +3082,261 @@ button {
   border: 2px solid var(--line);
   border-radius: 50%;
 }
+
+/* Teclado: los atajos solo se enseñan donde hay teclado y ratón */
+.g-keys-hint {
+  grid-column: 1 / -1;
+  text-align: center;
+}
+
+@media (hover: none), (pointer: coarse) {
+  .kbd-only {
+    display: none !important;
+  }
+}
+
+/* Final: titular con rayos y la ruta por fases */
+.g-end-hero {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 22px 16px 18px;
+  text-align: center;
+  overflow: hidden;
+  border: var(--b) solid var(--line);
+  box-shadow: 6px 6px 0 0 var(--shadow);
+  background:
+    repeating-conic-gradient(from 0deg at 50% 45%, rgba(255, 90, 90, 0.2) 0deg 10deg, transparent 10deg 20deg),
+    #1a1030;
+}
+
+.g-end-hero.gold {
+  background:
+    repeating-conic-gradient(from 0deg at 50% 45%, rgba(248, 216, 96, 0.28) 0deg 10deg, transparent 10deg 20deg),
+    #2a1e08;
+}
+
+.g-end-hero .screen-title.g-big {
+  margin: 0;
+  font-size: clamp(20px, 4.4vw, 40px);
+  color: #ff6a5a;
+  text-shadow:
+    4px 4px 0 #1e1e1e,
+    -2px -2px 0 #1e1e1e,
+    2px -2px 0 #1e1e1e,
+    -2px 2px 0 #1e1e1e;
+}
+
+.g-end-hero.gold .screen-title.g-big {
+  color: var(--title);
+}
+
+.g-end-sub {
+  margin: 0;
+  font-size: 26px;
+  color: #fff;
+  text-shadow: 2px 2px 0 #1e1e1e;
+}
+
+.g-track {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+  width: min(100%, 640px);
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.g-track li {
+  display: grid;
+  gap: 2px;
+  padding: 6px 2px;
+  font-family: var(--font-pixel);
+  font-size: 8px;
+  color: #6a7488;
+  background: #2a3446;
+  border: 3px solid var(--line);
+  box-shadow: 3px 3px 0 0 #000;
+}
+
+.g-track li span {
+  font-family: var(--font-body);
+  font-size: 22px;
+  line-height: 1;
+}
+
+.g-track li.won {
+  color: #fff;
+  background: #3fa34d;
+}
+
+.g-track li.lost {
+  color: #fff;
+  background: #d04040;
+  animation: flash-red 0.5s steps(1) 6;
+}
+
+@keyframes flash-red {
+  50% {
+    background: #ff9a8a;
+  }
+}
+
+.g-end-grid {
+  grid-template-rows: auto 1fr;
+  grid-template-areas:
+    "card share"
+    "card info";
+}
+
+.g-card-col {
+  grid-area: card;
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+}
+
+.g-share-box {
+  grid-area: share;
+}
+
+.g-end-info {
+  grid-area: info;
+}
+
+.g-format {
+  display: flex;
+  gap: 10px;
+}
+
+.g-format .btn[aria-pressed="true"] {
+  color: var(--sky);
+  background: var(--title);
+}
+
+.g-card-preview.story {
+  aspect-ratio: 9 / 16;
+  width: min(100%, 380px);
+}
+
+.g-card-preview.square {
+  width: 100%;
+}
+
+.g-share-main {
+  width: 100%;
+  padding: 18px 16px;
+  font-size: 13px;
+  color: var(--ink);
+  background: var(--title);
+  animation: pulse-glow 1.6s steps(2) infinite;
+}
+
+.g-share-main:hover {
+  background: #ffe680;
+}
+
+.g-share-main:disabled {
+  opacity: 0.6;
+  animation: none;
+}
+
+@keyframes pulse-glow {
+  50% {
+    box-shadow:
+      4px 4px 0 0 var(--shadow),
+      0 0 0 4px rgba(248, 216, 96, 0.45);
+  }
+}
+
+.g-share {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.g-share .btn {
+  padding: 10px 6px;
+  font-size: 8px;
+  white-space: normal;
+  text-align: center;
+}
+
+.g-share .btn:disabled {
+  opacity: 0.55;
+}
+
+.btn.s-x {
+  color: #fff;
+  background: #000;
+}
+
+.btn.s-wa {
+  color: #0b3d1e;
+  background: #25d366;
+}
+
+.btn.s-tg {
+  color: #fff;
+  background: #2aabee;
+}
+
+.btn.s-ig {
+  color: #fff;
+  background: linear-gradient(45deg, #f09433, #dc2743 50%, #bc1888);
+}
+
+.btn.s-tt {
+  color: #fff;
+  background: #111;
+  text-shadow:
+    -2px 0 #25f4ee,
+    2px 0 #fe2c55;
+}
+
+.btn.s-x:hover,
+.btn.s-wa:hover,
+.btn.s-tg:hover,
+.btn.s-ig:hover,
+.btn.s-tt:hover {
+  filter: brightness(1.12);
+}
+
+.g-end-side > p.g-note {
+  color: var(--title);
+}
+
+.g-msg {
+  padding: 10px 14px;
+}
+
+.g-msg p {
+  margin: 6px 0 0;
+  font-size: 20px;
+  line-height: 1.15;
+  white-space: pre-line;
+  color: var(--ink);
+}
+
+@media (max-width: 760px) {
+  .g-end-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+    grid-template-areas:
+      "share"
+      "card"
+      "info";
+  }
+
+  .g-card-preview.story {
+    width: min(100%, 270px);
+  }
+
+  .g-end-sub {
+    font-size: 22px;
+  }
+
+  .g-track li {
+    font-size: 6px;
+  }
+}

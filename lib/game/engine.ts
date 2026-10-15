@@ -451,6 +451,8 @@ export type Run = {
   elder: boolean;
   /** Último resultado, para la tarjeta final */
   over?: "champion" | "eliminated";
+  /** Quién te eliminó, para el mensaje final */
+  killer?: string;
   log: string[];
 };
 
@@ -886,6 +888,7 @@ export function finishBattle(run: Run, b: Battle, data: GameData): { run: Run; g
   if (b.result !== "win") {
     // Una sola vida: perder un combate es quedar eliminado.
     r.over = "eliminated";
+    r.killer = b.kind === "fight" && b.foe.team ? `${b.foe.name} (${b.foe.team})` : b.foe.name;
     return { run: r, gold: 0, levels: 0 };
   }
   let gold = 0;
