@@ -14,11 +14,13 @@ export function StreamPlayer({ liveStreams }: { liveStreams: LiveStream[] }) {
   const { streams, current, liveChannels, choose, setLiveStreams, setSlot, isFullscreen, toggleFullscreen } = usePlayer();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => setLiveStreams(liveStreams), [liveStreams, setLiveStreams]);
 
   useEffect(() => {
     if (!menuOpen) return;
+    listRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setMenuOpen(false);
     const onClick = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
@@ -65,7 +67,7 @@ export function StreamPlayer({ liveStreams }: { liveStreams: LiveStream[] }) {
         </button>
 
         {menuOpen ? (
-          <div className="stream-menu card" role="menu">
+          <div ref={listRef} className="stream-menu card" role="menu">
             {groups.map((g) => (
               <div key={g.title}>
                 <h3 className="px-small">{g.title}</h3>
