@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { ChampSprite, Hp, ItemIcon, StatLine, TypeBadge, statsText } from "@/components/game/parts";
-import { MAX_ITEMS, movesOf, unitStats, type Run, type Unit } from "@/lib/game/engine";
+import { MAX_ITEMS, moveNote, movesOf, unitStats, type Run, type Unit } from "@/lib/game/engine";
 import type { GameData } from "@/lib/game/types";
 
 /** Tu equipo: icono, nivel y vida de cada campeón. Al tocar uno se ve su ficha. */
@@ -79,7 +79,7 @@ export function UnitSheet({ unit, run, data }: { unit: Unit; run: Run; data: Gam
       <ul className="g-moves-list">
         {movesOf(c).map((m) => (
           <li key={m.key}>
-            <span className="g-key">{m.key}</span> {m.name} <span className="muted">· {m.note}</span>
+            <span className="g-key">{m.key === "A" ? "AA" : m.key}</span> {m.name} <span className="muted">· {moveNote(m)}</span>
           </li>
         ))}
       </ul>

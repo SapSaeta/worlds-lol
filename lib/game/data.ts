@@ -6,6 +6,7 @@ import { TOURNAMENT, type TournamentConfig } from "@/config/tournament";
 import { getChampions, type Champion } from "@/lib/ddragon";
 import { mapLimit } from "@/lib/gamestats";
 import { api, feedWindow, fetchGpr, fetchTeamDetails, fetchTeamSlugs, leagueIdsByName, type Json, type TeamDetails } from "@/lib/lolesports";
+import { classifySpell } from "@/lib/game/spells";
 import { ROLES, type Cls, type GameData, type GChamp, type GItem, type GPlayer, type GTeam, type Role, type Spell, type Stats } from "@/lib/game/types";
 
 const DD = "https://ddragon.leagueoflegends.com";
@@ -61,6 +62,8 @@ async function championSpells(version: string, id: string): Promise<Spell[]> {
     key: (["Q", "W", "E", "R"] as const)[i],
     name: s.name,
     icon: `${DD}/cdn/${version}/img/spell/${s.image?.full}`,
+    cd: Number(s.cooldown?.[0]) || 10,
+    ...classifySpell(String(s.description ?? "")),
   }));
 }
 

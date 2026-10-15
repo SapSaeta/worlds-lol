@@ -46,36 +46,20 @@ export function PixelIcon({ name, size = 24 }: { name: keyof typeof ICONS | stri
   );
 }
 
-/* ---------- Monstruos de la Grieta en pixel art (12x12) ---------- */
-
-const MONSTER_ART: Record<string, { grid: string[]; colors: Record<string, string> }> = {
-  dragon: {
-    grid: ["....rr......", "...rrrr...r.", "..rryrr..rr.", "..rrrrr.rrr.", "...rrrrrrrr.", "..orrrrrrr..", ".oorrrrrr...", ".oo.rrrrr...", "....rr.rr...", "...rr...rr..", "..rr.....rr.", "............"],
-    colors: { r: "#d0402a", y: "#f8d860", o: "#f08030" },
-  },
-  herald: {
-    grid: ["....pppp....", "...pppppp...", "..pppyyppp..", "..ppyxxyppp.", "..ppyxxypp..", "..pppyyppp..", "...pppppp...", "..pp.pp.pp..", ".pp..pp..pp.", ".p...pp...p.", "....pppp....", "............"],
-    colors: { p: "#8a50c8", y: "#f8d860", x: "#2a2a2a" },
-  },
-  baron: {
-    grid: [".p........p.", ".pp......pp.", "..pppppppp..", ".pppyppyppp.", ".pppppppppp.", "..pwpwpwpw..", "..pppppppp..", "..pppppppp..", ".pp.pppp.pp.", ".p..pppp..p.", "...pppppp...", "............"],
-    colors: { p: "#6a3a98", y: "#f8d860", w: "#f2f2f2" },
-  },
-};
-
-export function MonsterArt({ id, size = 96 }: { id: string; size?: number }) {
-  const art = MONSTER_ART[id] ?? MONSTER_ART.dragon;
-  return (
-    <svg width={size} height={size} viewBox="0 0 12 12" shapeRendering="crispEdges" role="img" aria-label={id}>
-      {art.grid.flatMap((row, y) => [...row].map((ch, x) => (art.colors[ch] ? <rect key={`${x}-${y}`} x={x} y={y} width={1} height={1} fill={art.colors[ch]} /> : null)))}
-    </svg>
-  );
+/** Sprite de campeón: el icono oficial pixelado. Los monstruos usan su icono del juego. */
+export function ChampSprite({ champ, size = 64, res = 28 }: { champ: GChamp; size?: number; res?: number }) {
+  const src = champ.icon.startsWith("monster:") ? champ.icon.slice(8) : champ.icon;
+  return <PixelImg src={src} alt={champ.name} size={size} res={res} />;
 }
 
-/** Sprite de campeón: el icono oficial pixelado, o el dibujo del monstruo. */
-export function ChampSprite({ champ, size = 64, res = 28 }: { champ: GChamp; size?: number; res?: number }) {
-  if (champ.icon.startsWith("monster:")) return <MonsterArt id={champ.icon.slice(8)} size={size} />;
-  return <PixelImg src={champ.icon} alt={champ.name} size={size} res={res} />;
+/** Retrato de combate: el sprite en un marco redondo del color de cada lado. */
+export function Portrait({ champ, size, side, className = "" }: { champ: GChamp; size: number; side: "me" | "foe"; className?: string }) {
+  const monster = champ.icon.startsWith("monster:");
+  return (
+    <span className={`g-portrait ${side}${monster ? " monster" : ""} ${className}`} style={{ width: size, height: size }}>
+      <ChampSprite champ={champ} size={size} res={monster ? 44 : 40} />
+    </span>
+  );
 }
 
 export function TypeBadge({ cls }: { cls: string }) {

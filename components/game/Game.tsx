@@ -13,8 +13,10 @@ import { TeamBar } from "@/components/game/TeamBar";
 import { ChampSprite, Hp, PixelIcon, StatLine, TypeBadge } from "@/components/game/parts";
 import { drawCard, resultLine, shareText, toBlob, xIntent } from "@/components/game/share";
 import {
-  LIVES,
+  DIFFICULTY,
+  DRAKES,
   MAX_TEAM,
+  MONSTERS,
   ROLE_LABEL,
   ROLE_PERK,
   STAGES,
@@ -26,6 +28,7 @@ import {
   finishBattle,
   healAll,
   monsterSide,
+  moveNote,
   movesOf,
   newRun,
   nextStage,
@@ -34,7 +37,6 @@ import {
   rivalTrainer,
   score,
   shopStock,
-  stageLevel,
   startBattle,
   trainerOptions,
   type Action,
@@ -138,8 +140,8 @@ export function Game({ data }: { data: GameData }) {
         </div>
         <div className="dialog card">
           Elige a un jugador de los Worlds como entrenador y empieza con un campeón de su pool. Recorre la Grieta desde el
-          Play-In hasta la final de Nueva York: combate, ficha campeones rivales, compra objetos y vence a los equipos jefe.
-          Tienes tres vidas, como en la fase suiza.
+          Play-In hasta la final de Nueva York: combate, ficha campeones rivales, compra objetos, caza dragones y vence a los
+          equipos jefe. Solo tienes una vida: a la primera derrota, quedas eliminado.
           <span className="next">▼</span>
         </div>
         <div className="g-actions-row">
@@ -161,7 +163,8 @@ export function Game({ data }: { data: GameData }) {
     node.done = true;
     if (node.kind === "fight") go({ s: "battle", battle: startBattle(r, data, "fight", rivalTrainer(r, data)) });
     else if (node.kind === "boss") go({ s: "battle", battle: startBattle(r, data, "boss", bossTeam(r, data)) });
-    else if (node.kind === "objective" && node.monster) go({ s: "battle", battle: startBattle(r, data, "objective", monsterSide(node.monster, r, data), node.monster) });
+    else if (node.kind === "objective" && node.monster)
+      go({ s: "battle", battle: startBattle(r, data, "objective", monsterSide(node.monster, r, data, node.drake), node.monster, node.drake) });
     else if (node.kind === "shop") go({ s: "shop", stock: shopStock(data, r.stage) });
     else if (node.kind === "fountain") {
       healAll(r, data);
@@ -186,7 +189,7 @@ export function Game({ data }: { data: GameData }) {
   if (screen.s === "map") {
     body = (
       <>
-        <MapView run={run} onEnter={enter} />
+        <MapView run={run} data={data} onEnter={enter} />
         <TeamBar run={run} data={data} />
       </>
     );
@@ -194,7 +197,7 @@ export function Game({ data }: { data: GameData }) {
     body = (
       <BattleView
         battle={screen.battle}
-        onAction={(a: Action) => go({ s: "battle", battle: playTurn(screen.battle, a, run) })}
+        onAction={(a: Action) => go({ s: "battle", battle: playTurn(screen.battle, a) })}
         onDone={() => {
           const res = finishBattle(run, screen.battle, data);
           setRun(res.run);
@@ -333,24 +336,18 @@ function Hud({ run, data }: { run: Run; data: GameData }) {
         <span title="Oro" className="g-gold">
           {fmt(run.gold)} oro
         </span>
-        <Lives n={run.lives} />
-        {run.dragons ? <span title="Dragones">Dragón ×{run.dragons}</span> : null}
-        {run.baron ? <span title="Mano del Barón">Barón</span> : null}
+        {run.drakes.length || run.baron || run.elder ? (
+          <span className="g-buffs">
+            {run.drakes.map((d, i) => (
+              <PixelImg key={i} src={DRAKES[d].icon} alt={DRAKES[d].name} size={22} res={16} />
+            ))}
+            {run.baron ? <PixelImg src={MONSTERS.baron.icon} alt="Mano del Barón" size={22} res={16} /> : null}
+            {run.elder ? <PixelImg src={MONSTERS.elder.icon} alt="Ejecución del ancestral" size={22} res={16} /> : null}
+          </span>
+        ) : null}
         <span title="Puntos">{fmt(score(run))} pts</span>
       </div>
     </div>
-  );
-}
-
-function Lives({ n }: { n: number }) {
-  return (
-    <span className="g-lives" title={`${n} ${n === 1 ? "vida" : "vidas"}`} aria-label={`${n} ${n === 1 ? "vida" : "vidas"}`}>
-      {Array.from({ length: LIVES }, (_, i) => (
-        <span key={i} className={i < n ? "" : "lost"}>
-          <PixelIcon name="fountain" size={14} />
-        </span>
-      ))}
-    </span>
   );
 }
 
@@ -374,7 +371,7 @@ function TrainerCard({ p, data, onPick }: { p: GPlayer; data: GameData; onPick: 
 
 function StarterCard({ id, trainer, data, onPick }: { id: string; trainer: GPlayer; data: GameData; onPick: () => void }) {
   const c = data.champions[id];
-  const d = derive(c, stageLevel(0), [], data, { role: trainer.role });
+  const d = derive(c, DIFFICULTY.startLevel, [], data, { role: trainer.role });
   return (
     <div className="g-starter card">
       <ChampSprite champ={c} size={88} res={30} />
@@ -388,7 +385,7 @@ function StarterCard({ id, trainer, data, onPick }: { id: string; trainer: GPlay
       <ul className="g-moves-list">
         {movesOf(c).map((m) => (
           <li key={m.key}>
-            <span className="g-key">{m.key}</span> {m.name} <span className="muted">· {m.note}</span>
+            <span className="g-key">{m.key === "A" ? "AA" : m.key}</span> {m.name} <span className="muted">· {moveNote(m)}</span>
           </li>
         ))}
       </ul>
@@ -402,24 +399,6 @@ function StarterCard({ id, trainer, data, onPick }: { id: string; trainer: GPlay
 function Reward({ run, data, screen, onDone }: { run: Run; data: GameData; screen: Extract<Screen, { s: "reward" }>; onDone: (r: Run) => void }) {
   const [replacing, setReplacing] = useState<Unit | null>(null);
   const { battle, gold, levels, reward } = screen;
-  if (battle.result !== "win")
-    return (
-      <div className="g-event card">
-        <h2 className="px-title g-event-title">Derrota contra {battle.foe.name}</h2>
-        <p>
-          Pierdes una vida. {run.lives === 1 ? "Te queda la última" : `Te quedan ${run.lives}`}: a la próxima derrota, quedas eliminado.
-        </p>
-        <Lives n={run.lives} />
-        <p className="muted">
-          {battle.kind === "boss" ? "Vuelves a la casilla anterior con el equipo curado y puedes volver a retar al jefe." : "Tu equipo sigue adelante con un poco de vida."}
-        </p>
-        <div className="g-actions-row">
-          <button type="button" className="btn" onClick={() => onDone(run)}>
-            Continuar
-          </button>
-        </div>
-      </div>
-    );
   const captures = captureOptions(battle).filter((u) => !run.team.some((m) => m.champ === u.champ));
   const title = battle.kind === "boss" ? `¡Has eliminado a ${battle.foe.name}!` : battle.kind === "objective" ? `¡${battle.foe.name} es tuyo!` : "¡Victoria!";
   return (
@@ -450,7 +429,7 @@ function Reward({ run, data, screen, onDone }: { run: Run; data: GameData; scree
                   <ChampSprite champ={c} size={56} />
                   <span className="bold">{c.name}</span>
                   <TypeBadge cls={c.cls} />
-                  <span className="g-lv">Nv {Math.max(1, u.level - 1)}</span>
+                  <span className="g-lv">Nv {u.level}</span>
                 </button>
               );
             })}

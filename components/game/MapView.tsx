@@ -1,7 +1,10 @@
 "use client";
 
+import { PixelImg } from "@/components/PixelImg";
+import { TeamLogo } from "@/components/TeamLogo";
 import { PixelIcon } from "@/components/game/parts";
-import { MONSTERS, STAGES, reachable, type MapNode, type NodeKind, type Run } from "@/lib/game/engine";
+import { STAGES, monsterIcon, monsterName, reachable, type MapNode, type NodeKind, type Run } from "@/lib/game/engine";
+import type { GameData } from "@/lib/game/types";
 
 const KIND_LABEL: Record<NodeKind, string> = {
   fight: "Combate",
@@ -12,16 +15,16 @@ const KIND_LABEL: Record<NodeKind, string> = {
   boss: "Jefe",
 };
 
-const nodeTitle = (n: MapNode) => (n.kind === "objective" && n.monster ? MONSTERS[n.monster].name : KIND_LABEL[n.kind]);
-
-/** Mapa de la fase: de abajo (inicio) a arriba (jefe), con los caminos posibles. */
-export function MapView({ run, onEnter }: { run: Run; onEnter: (row: number, col: number) => void }) {
+/** Mapa de la fase sobre la Grieta: de tu base (abajo) al nexo rival (arriba), con los caminos posibles. */
+export function MapView({ run, data, onEnter }: { run: Run; data: GameData; onEnter: (row: number, col: number) => void }) {
   const map = run.maps[run.stage];
   const rows = map.rows;
   const next = reachable(run);
   const nextRow = run.row + 1;
+  const boss = data.teams.find((t) => t.code === map.boss);
   const x = (i: number, n: number) => ((i + 1) / (n + 1)) * 100;
   const y = (r: number) => 100 - ((r + 0.5) / rows.length) * 100;
+  const title = (n: MapNode) => (n.kind === "objective" && n.monster ? monsterName(n.monster, n.drake) : n.kind === "boss" ? `Jefe: ${boss?.name ?? map.boss}` : KIND_LABEL[n.kind]);
 
   return (
     <div className="g-map card">
@@ -33,6 +36,9 @@ export function MapView({ run, onEnter }: { run: Run; onEnter: (row: number, col
         </div>
         <div className="g-map-title">
           {map.name} <span className="muted">· {map.city}</span>
+        </div>
+        <div className="g-map-boss px-small">
+          Jefe: <TeamLogo code={map.boss} image={boss?.image ?? ""} size={18} /> {boss?.name ?? map.boss}
         </div>
       </div>
       <div className="g-rift">
@@ -61,6 +67,7 @@ export function MapView({ run, onEnter }: { run: Run; onEnter: (row: number, col
           row.map((n, i) => {
             const can = r === nextRow && next.includes(i);
             const here = r === run.row && i === run.col;
+            const t = title(n);
             return (
               <button
                 key={`${r}-${i}`}
@@ -69,10 +76,16 @@ export function MapView({ run, onEnter }: { run: Run; onEnter: (row: number, col
                 style={{ left: `${x(i, row.length)}%`, top: `${y(r)}%` }}
                 disabled={!can}
                 onClick={() => onEnter(r, i)}
-                title={nodeTitle(n)}
-                aria-label={nodeTitle(n)}
+                title={t}
+                aria-label={t}
               >
-                <PixelIcon name={n.kind} size={n.kind === "boss" ? 32 : 24} />
+                {n.kind === "objective" && n.monster ? (
+                  <PixelImg src={monsterIcon(n.monster, n.drake)} alt="" size={34} res={24} />
+                ) : n.kind === "boss" ? (
+                  <TeamLogo code={map.boss} image={boss?.image ?? ""} size={40} />
+                ) : (
+                  <PixelIcon name={n.kind} size={24} />
+                )}
               </button>
             );
           }),

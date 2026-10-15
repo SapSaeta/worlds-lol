@@ -8,7 +8,21 @@ export const ROLES: Role[] = ["top", "jungle", "mid", "bottom", "support"];
 export type Cls = "Fighter" | "Tank" | "Mage" | "Assassin" | "Marksman" | "Support";
 
 export type SpellKey = "Q" | "W" | "E" | "R";
-export type Spell = { key: SpellKey; name: string; icon: string };
+
+/** Efectos de una habilidad, sacados de su descripción oficial. */
+export type SpellFx = "stun" | "slow" | "shield" | "heal" | "drain" | "dash" | "haste" | "empower" | "buff" | "guard" | "execute" | "multi" | "evade";
+/** Tipo de daño: físico, mágico, verdadero, el principal del campeón ("auto") o ninguno. */
+export type DmgType = "phys" | "magic" | "true" | "auto" | "none";
+
+export type Spell = {
+  key: SpellKey;
+  name: string;
+  icon: string;
+  /** Enfriamiento oficial a rango 1, en segundos */
+  cd: number;
+  dmg: DmgType;
+  fx: SpellFx[];
+};
 
 export type GChamp = {
   id: string;
