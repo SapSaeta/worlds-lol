@@ -29,7 +29,7 @@ export const CLS_LABEL: Record<Cls, string> = {
   Support: "Soporte",
 };
 
-/** Cada clase pega x1,5 a dos clases y recibe x1,5 de otras dos. */
+/** Cada clase pega x1,3 a dos clases y recibe x1,3 de otras dos. */
 export const STRONG: Record<Cls, Cls[]> = {
   Assassin: ["Marksman", "Mage"],
   Tank: ["Assassin", "Fighter"],
@@ -41,8 +41,8 @@ export const STRONG: Record<Cls, Cls[]> = {
 
 export function typeMult(att: Cls | "Monster", def: Cls | "Monster") {
   if (att === "Monster" || def === "Monster") return 1;
-  if (STRONG[att].includes(def)) return 1.5;
-  if (STRONG[def].includes(att)) return 0.67;
+  if (STRONG[att].includes(def)) return 1.3;
+  if (STRONG[def].includes(att)) return 0.77;
   return 1;
 }
 
@@ -62,6 +62,8 @@ export const ROLE_PERK: Record<Role, string> = {
 export const MAX_TEAM = 5;
 export const MAX_ITEMS = 3;
 export const MAX_LEVEL = 18;
+/** Como en la fase suiza: a la tercera derrota, eliminado. */
+export const LIVES = 3;
 
 export type Unit = {
   uid: string;
@@ -260,6 +262,8 @@ export type Run = {
   bosses: number;
   dragons: number;
   baron: boolean;
+  /** Derrotas que aún puedes permitirte */
+  lives: number;
   /** Último resultado, para la tarjeta final */
   over?: "champion" | "eliminated";
   log: string[];
@@ -279,6 +283,7 @@ export function newRun(trainer: GPlayer, starter: string, data: GameData): Run {
     bosses: 0,
     dragons: 0,
     baron: false,
+    lives: LIVES,
     log: [],
   };
 }
@@ -333,6 +338,8 @@ export function rivalTrainer(run: Run, data: GameData): Side {
   };
 }
 
+const BOSS_SIZE = [3, 3, 4, 5, 5];
+
 /** Jefe de la fase: un equipo real, más fuerte cuanto más avanzas. */
 export function bossTeam(run: Run, data: GameData): Side & { teamData: GTeam } {
   const teams = data.teams.filter((t) => t.code !== run.trainer.team && t.players.length >= 3);
@@ -353,8 +360,10 @@ export function bossTeam(run: Run, data: GameData): Side & { teamData: GTeam } {
     team: team.code,
     image: team.image,
     teamData: team,
-    units: players.map((p) => newUnit(pick(p.pool.slice(0, 3)), stageLevel(run.stage) + 2, data)),
-    mult: 1.08 + 0.07 * run.stage,
+    units: shuffle(players)
+      .slice(0, BOSS_SIZE[run.stage] ?? 5)
+      .map((p) => newUnit(pick(p.pool.slice(0, 3)), stageLevel(run.stage) + 1, data)),
+    mult: 1 + 0.06 * run.stage,
   };
 }
 
@@ -563,7 +572,19 @@ export function finishBattle(run: Run, b: Battle, data: GameData): { run: Run; g
     if (u) u.hp = f.hp;
   }
   if (b.result !== "win") {
-    r.over = "eliminated";
+    r.lives--;
+    if (r.lives <= 0) {
+      r.over = "eliminated";
+      return { run: r, gold: 0, levels: 0 };
+    }
+    if (b.kind === "boss") {
+      // Contra el jefe se puede repetir: vuelves a la casilla anterior con el equipo curado.
+      const rows = r.maps[r.stage].rows;
+      rows[r.row][r.col].done = false;
+      r.row--;
+      r.col = Math.max(0, rows[r.row].findIndex((n) => n.done));
+      healAll(r, data);
+    } else for (const u of r.team) u.hp = Math.round(unitStats(u, data, r.trainer.role).hp * 0.4);
     return { run: r, gold: 0, levels: 0 };
   }
   let gold = 0;
@@ -586,12 +607,12 @@ export function finishBattle(run: Run, b: Battle, data: GameData): { run: Run; g
     reward = b.monster ? MONSTERS[b.monster].reward : undefined;
   }
   r.gold += gold;
-  const heal = r.trainer.role === "support" ? 0.35 : 0.2;
+  const heal = r.trainer.role === "support" ? 0.45 : 0.3;
   for (const u of r.team) {
     u.level = Math.min(MAX_LEVEL, u.level + levels);
     const max = unitStats(u, data, r.trainer.role).hp;
-    // Los caídos vuelven con un cuarto de vida; los demás se curan un poco.
-    u.hp = u.hp <= 0 ? Math.round(max * 0.25) : Math.min(max, Math.round(u.hp + max * heal));
+    // Los caídos vuelven con algo de vida; los demás se curan un poco.
+    u.hp = u.hp <= 0 ? Math.round(max * 0.35) : Math.min(max, Math.round(u.hp + max * heal));
   }
   return { run: r, gold, levels, reward };
 }
