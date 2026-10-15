@@ -3340,3 +3340,22 @@ button {
     font-size: 6px;
   }
 }
+
+/* Resultado compartido (/jugar/r) */
+.g-shared-body {
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+  justify-items: center;
+  text-align: center;
+}
+
+.g-shared-body img {
+  width: 100%;
+  height: auto;
+  border: var(--b) solid var(--line);
+}
+
+.g-shared-body .g-share-main {
+  max-width: 520px;
+}
