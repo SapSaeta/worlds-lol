@@ -91,43 +91,46 @@ export function StreamPlayer({ liveStreams }: { liveStreams: LiveStream[] }) {
 
   return (
     <div className="player-col">
-      <div ref={frameRef} className="player-frame pixel-box gold">
-        {host ? (
-          <iframe
-            key={current.id}
-            src={embedUrl(current, host)}
-            title={`Emisión de ${current.label}`}
-            allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-            allowFullScreen
-          />
-        ) : (
-          <div className="player-placeholder px-title muted">Cargando emisión…</div>
-        )}
+      <div ref={frameRef} className="player-frame card dark">
+        <div className="label px-small">
+          {liveChannels.has(current.channel.toLowerCase()) ? <span className="live-dot" aria-label="En directo" /> : null}
+          {current.kind === "oficial" ? "Emisión oficial" : "Cooficial"} · {current.label}
+        </div>
+        <div className="player-screen">
+          {host ? (
+            <iframe
+              key={current.id}
+              src={embedUrl(current, host)}
+              title={`Emisión de ${current.label}`}
+              allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+              allowFullScreen
+            />
+          ) : (
+            <div className="player-placeholder px-small">Cargando emisión…</div>
+          )}
+        </div>
       </div>
 
-      <div className="player-bar pixel-box" ref={menuRef} style={{ position: "relative" }}>
+      <div className="player-bar card" ref={menuRef}>
         <div className="now">
-          {liveChannels.has(current.channel.toLowerCase()) ? <span className="live-dot" aria-label="En directo" /> : null}
-          <span className="px-title" style={{ whiteSpace: "nowrap" }}>
-            {current.label}
-          </span>
+          <span className="name bold">{current.label}</span>
           <span className={`badge ${current.kind}`}>{current.kind}</span>
           <span className={`badge ${current.lang}`}>{current.lang}</span>
-          {current.note ? <span className="muted">{current.note}</span> : null}
+          {current.note ? <span className="muted" style={{ whiteSpace: "nowrap" }}>{current.note}</span> : null}
         </div>
 
-        <button className="px-btn gold" aria-expanded={menuOpen} onClick={() => setMenuOpen((o) => !o)}>
-          Emisión {menuOpen ? "▴" : "▾"}
+        <button className="btn" aria-expanded={menuOpen} aria-pressed={menuOpen} onClick={() => setMenuOpen((o) => !o)}>
+          Cambiar emisión
         </button>
-        <button className="px-btn" onClick={toggleFullscreen} aria-label="Pantalla completa">
-          {isFullscreen ? "Salir" : "⛶ Completa"}
+        <button className="btn dark" onClick={toggleFullscreen} aria-label="Pantalla completa">
+          {isFullscreen ? "Salir" : "Pantalla completa"}
         </button>
 
         {menuOpen ? (
-          <div className="stream-menu pixel-box" role="menu">
+          <div className="stream-menu card" role="menu">
             {groups.map((g) => (
               <div key={g.title}>
-                <h3 className="px-small muted">{g.title}</h3>
+                <h3 className="px-small">{g.title}</h3>
                 {g.items.map((s) => (
                   <button
                     key={s.id}

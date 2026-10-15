@@ -1,32 +1,36 @@
-/* Estética pixel inspirada en los RPG de Game Boy Advance, con la paleta
-   hextech/dorada de League of Legends. */
+/* Estética inspirada en pokelike.xyz: cielo pixelado de fondo, cartas color
+   crema con borde negro y sombra dura, títulos amarillos en Press Start 2P y
+   texto monoespaciado pixel. */
 
 :root {
-  --bg: #0e0e0e;
-  --bg-2: #13151a;
-  --panel: #181a20;
-  --panel-2: #22252d;
-  --panel-3: #2c303a;
-  --line: #e9e4d6;
-  --line-dim: #4a4f5c;
-  --ink: #f4f1e8;
-  --muted: #9a9ca6;
-  --gold: #c8aa6e;
-  --gold-hi: #f0d78c;
-  --gold-lo: #785a28;
-  --hex: #0ac8b9;
-  --hex-lo: #005a82;
-  --red: #e84057;
-  --red-lo: #7a1c2b;
-  --green: #4cd964;
-  --green-lo: #1f6b31;
-  --amber: #f5b83d;
+  --sky: #8cc8f4;
+  --card: #e7e4d9;
+  --card-2: #dcd8ca;
+  --card-3: #d0ccbd;
+  --line: #2a2a2a;
+  --shadow: #2a2a2a;
+  --ink: #1e1e1e;
+  --ink-2: #4a4a44;
+  --muted: #8a8a80;
+  --dark: #2e2e2e;
+  --dark-2: #3a3a3a;
+  --slate: #51748e;
+  --slate-lo: #3c5a70;
+  --title: #f8d860;
+  --title-lo: #b89a30;
+  --gold: #d4a838;
+  --hp: #75fb67;
+  --hp-mid: #f8d030;
+  --hp-low: #f85838;
+  --blue: #61a8f8;
+  --red: #e04848;
 
-  --px: 4px;
   --font-pixel: "Press Start 2P", ui-monospace, monospace;
-  --font-body: "Pixelify Sans", system-ui, sans-serif;
-  --header-h: 64px;
-  color-scheme: dark;
+  --font-body: "VT323", ui-monospace, monospace;
+  --b: 3px;
+  --sh: 6px;
+  --header-h: 72px;
+  color-scheme: light;
 }
 
 * {
@@ -37,22 +41,18 @@ html,
 body {
   margin: 0;
   padding: 0;
-  background: var(--bg);
   color: var(--ink);
   font-family: var(--font-body);
-  font-size: 16px;
-  line-height: 1.35;
+  font-size: 20px;
+  line-height: 1.15;
   font-variant-ligatures: none;
   -webkit-font-smoothing: none;
-  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
   min-height: 100vh;
-  background:
-    radial-gradient(ellipse at 50% -20%, rgba(10, 200, 185, 0.08), transparent 60%),
-    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.015) 0 2px, transparent 2px 4px),
-    var(--bg);
+  background: var(--sky) url("/scene.svg") center bottom / cover no-repeat fixed;
+  image-rendering: pixelated;
 }
 
 img {
@@ -74,155 +74,349 @@ button {
 }
 
 ::selection {
-  background: var(--gold);
-  color: #000;
+  background: var(--title);
+  color: var(--ink);
 }
 
-/* ---------- Tipografía pixel ---------- */
+/* ---------- Tipografía ---------- */
+
+.px {
+  font-family: var(--font-pixel);
+  line-height: 1.5;
+}
 
 .px-title {
   font-family: var(--font-pixel);
   font-size: 12px;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  line-height: 1.6;
+  line-height: 1.5;
 }
 
 .px-small {
   font-family: var(--font-pixel);
   font-size: 8px;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
   line-height: 1.6;
+  letter-spacing: 0.3px;
+}
+
+.screen-title {
+  margin: 0;
+  font-family: var(--font-pixel);
+  font-size: clamp(14px, 2vw, 22px);
+  font-weight: normal;
+  color: var(--title);
+  text-align: center;
+  line-height: 1.4;
+}
+
+.screen-subtitle {
+  margin: 10px 0 0;
+  font-family: var(--font-pixel);
+  font-size: clamp(9px, 1vw, 12px);
+  color: #8db4cb;
+  text-align: center;
+}
+
+.bold {
+  text-shadow: 0.6px 0 0 currentColor;
 }
 
 .muted {
   color: var(--muted);
 }
 
-/* ---------- Caja pixel con esquinas recortadas ---------- */
+/* ---------- Carta crema (el bloque base de pokelike) ---------- */
 
-.pixel-box {
+.card {
   position: relative;
-  background: var(--panel);
-  margin: var(--px);
-  box-shadow:
-    0 calc(var(--px) * -1) 0 0 var(--line),
-    0 var(--px) 0 0 var(--line),
-    calc(var(--px) * -1) 0 0 0 var(--line),
-    var(--px) 0 0 0 var(--line),
-    inset 0 var(--px) 0 0 var(--panel-3),
-    inset 0 calc(var(--px) * -1) 0 0 rgba(0, 0, 0, 0.35);
+  background: var(--card);
+  border: var(--b) solid var(--line);
+  box-shadow: var(--sh) var(--sh) 0 0 var(--shadow);
 }
 
-.pixel-box.gold {
-  box-shadow:
-    0 calc(var(--px) * -1) 0 0 var(--gold),
-    0 var(--px) 0 0 var(--gold),
-    calc(var(--px) * -1) 0 0 0 var(--gold),
-    var(--px) 0 0 0 var(--gold),
-    inset 0 var(--px) 0 0 var(--panel-3),
-    inset 0 calc(var(--px) * -1) 0 0 rgba(0, 0, 0, 0.35);
+.card.dark {
+  background: var(--dark);
+  color: #d8d8d0;
 }
 
-.pixel-box.dim {
-  box-shadow:
-    0 calc(var(--px) * -1) 0 0 var(--line-dim),
-    0 var(--px) 0 0 var(--line-dim),
-    calc(var(--px) * -1) 0 0 0 var(--line-dim),
-    var(--px) 0 0 0 var(--line-dim);
+.inset {
+  border: 2px solid #5c5c56;
+  background: transparent;
 }
 
-/* ---------- Botones pixel ---------- */
+/* ---------- Botones ---------- */
 
-.px-btn {
-  --c: var(--panel-2);
-  --c-lo: #0b0c0f;
-  --c-ink: var(--ink);
-  position: relative;
+.btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 10px 14px 12px;
-  margin: var(--px);
+  padding: 10px 16px;
   font-family: var(--font-pixel);
-  font-size: 10px;
+  font-size: 9px;
+  line-height: 1.4;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--c-ink);
-  background: var(--c);
-  box-shadow:
-    0 calc(var(--px) * -1) 0 0 #000,
-    0 var(--px) 0 0 #000,
-    calc(var(--px) * -1) 0 0 0 #000,
-    var(--px) 0 0 0 #000,
-    inset 0 calc(var(--px) * -1) 0 0 var(--c-lo),
-    inset 0 var(--px) 0 0 rgba(255, 255, 255, 0.18);
-  transition: transform 60ms steps(1);
-  user-select: none;
+  color: var(--ink);
+  background: var(--card);
+  border: var(--b) solid var(--line);
+  box-shadow: 4px 4px 0 0 var(--shadow);
+  transition: transform 50ms steps(1), box-shadow 50ms steps(1);
   white-space: nowrap;
+  user-select: none;
 }
 
-.px-btn:hover {
-  filter: brightness(1.15);
+.btn:hover {
+  background: #f2efe4;
 }
 
-.px-btn:active,
-.px-btn[aria-pressed="true"] {
-  transform: translateY(2px);
-  box-shadow:
-    0 calc(var(--px) * -1) 0 0 #000,
-    0 var(--px) 0 0 #000,
-    calc(var(--px) * -1) 0 0 0 #000,
-    var(--px) 0 0 0 #000,
-    inset 0 var(--px) 0 0 var(--c-lo);
+.btn:active,
+.btn[aria-pressed="true"],
+.btn[aria-current="page"] {
+  transform: translate(4px, 4px);
+  box-shadow: 0 0 0 0 var(--shadow);
 }
 
-.px-btn:focus-visible {
-  outline: 2px dashed var(--gold-hi);
-  outline-offset: 6px;
+.btn:focus-visible,
+.icon-btn:focus-visible {
+  outline: 2px dashed var(--ink);
+  outline-offset: 4px;
 }
 
-.px-btn.gold {
-  --c: var(--gold);
-  --c-lo: var(--gold-lo);
-  --c-ink: #1a1206;
+.btn.dark {
+  color: #9a9a92;
+  background: var(--dark);
+  border-color: #444;
+  box-shadow: 4px 4px 0 0 #555;
 }
 
-.px-btn.hex {
-  --c: var(--hex);
-  --c-lo: var(--hex-lo);
-  --c-ink: #021514;
+.btn.dark:hover {
+  color: #d8d8d0;
 }
 
-.px-btn.red {
-  --c: var(--red);
-  --c-lo: var(--red-lo);
-  --c-ink: #fff;
-}
-
-.px-btn.sm {
-  padding: 6px 8px 8px;
+.btn.sm {
+  padding: 7px 10px;
   font-size: 8px;
 }
 
-/* Cursor ▶ parpadeante tipo menú de Pokémon */
-.cursor::before {
-  content: "▶";
-  display: inline-block;
-  width: 1em;
-  margin-right: 4px;
-  color: var(--gold-hi);
-  visibility: hidden;
+.icon-btn {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  font-size: 20px;
+  background: var(--card);
+  border: var(--b) solid var(--line);
+  box-shadow: 4px 4px 0 0 var(--shadow);
 }
 
-.cursor:hover::before,
-.cursor[aria-selected="true"]::before,
-.cursor[aria-current="page"]::before,
-.cursor[aria-pressed="true"]::before {
-  visibility: visible;
-  animation: blink 0.8s steps(1) infinite;
+.icon-btn:active {
+  transform: translate(4px, 4px);
+  box-shadow: none;
+}
+
+/* ---------- Insignias tipo "tipo Pokémon" ---------- */
+
+.badge {
+  display: inline-block;
+  padding: 4px 6px 3px;
+  font-family: var(--font-pixel);
+  font-size: 8px;
+  line-height: 1.2;
+  text-transform: uppercase;
+  color: #fff;
+  background: #8a8a80;
+  white-space: nowrap;
+}
+
+.badge.oficial {
+  background: #c89a28;
+}
+.badge.cooficial {
+  background: #4890b0;
+}
+.badge.es {
+  background: #d84040;
+}
+.badge.en {
+  background: #4870c8;
+}
+.badge.live {
+  background: var(--red);
+}
+.badge.region {
+  background: #7058a8;
+}
+.badge.pwr {
+  color: var(--ink-2);
+  background: var(--card-2);
+}
+
+/* Roles con los colores de los tipos clásicos */
+.role {
+  display: inline-block;
+  min-width: 52px;
+  text-align: center;
+  padding: 4px 4px 3px;
+  font-family: var(--font-pixel);
+  font-size: 7px;
+  text-transform: uppercase;
+  color: #fff;
+}
+.role.top {
+  background: #c03028;
+}
+.role.jungle {
+  background: #78c850;
+}
+.role.mid {
+  background: #6890f0;
+}
+.role.bottom {
+  background: #f08030;
+}
+.role.support {
+  background: #a040a0;
+}
+.role.none {
+  background: #a8a878;
+}
+
+/* ---------- Barras ---------- */
+
+/* Barra de PS: verde con borde negro grueso */
+.hp-bar {
+  height: 12px;
+  background: #3a3a3a;
+  border: var(--b) solid #000;
+  position: relative;
+}
+
+.hp-bar > i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--hp);
+  transition: width 400ms steps(10);
+}
+
+.hp-bar.mid > i {
+  background: var(--hp-mid);
+}
+.hp-bar.low > i {
+  background: var(--hp-low);
+}
+
+.hp-text {
+  font-family: var(--font-pixel);
+  font-size: 9px;
+  color: #9a9a90;
+  margin-top: 2px;
+}
+
+/* Barras de estadísticas: pista negra con relleno gris */
+.stats {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  column-gap: 6px;
+  row-gap: 3px;
+}
+
+.stats .k {
+  font-family: var(--font-pixel);
+  font-size: 7px;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.stats .bar {
+  height: 6px;
+  background: var(--line);
+  position: relative;
+}
+
+.stats .bar > i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: #8a8a86;
+}
+
+.stats .bar.gold > i {
+  background: var(--gold);
+}
+
+.stats .v {
+  font-family: var(--font-pixel);
+  font-size: 7px;
+  color: var(--muted);
+  min-width: 22px;
+  text-align: right;
+}
+
+/* ---------- Cabecera ---------- */
+
+.site-header {
+  position: relative;
+  z-index: 20;
+  height: var(--header-h);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 20px;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.logo .icon-btn img {
+  width: 24px;
+  height: 24px;
+}
+
+.logo-text {
+  font-family: var(--font-pixel);
+  font-size: 14px;
+  color: var(--title);
+  line-height: 1.3;
+}
+
+.logo-text small {
+  display: block;
+  font-size: 8px;
+  color: #fff;
+  opacity: 0.9;
+}
+
+.header-spacer {
+  flex: 1;
+}
+
+.nav {
+  display: flex;
+  gap: 10px;
+}
+
+/* Recuadro pizarra tipo contador de dinero */
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  font-family: var(--font-pixel);
+  font-size: 9px;
+  color: #f9d97c;
+  background: var(--slate);
+  border: 2px solid #a08a48;
+  white-space: nowrap;
+}
+
+.live-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--red);
+  animation: blink 1s steps(1) infinite;
+  flex: none;
 }
 
 @keyframes blink {
@@ -241,112 +435,51 @@ button {
   }
 }
 
-/* ---------- Cabecera ---------- */
-
-.site-header {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  height: var(--header-h);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 0 16px;
-  background: linear-gradient(#15171c, #0e0f12);
-  border-bottom: var(--px) solid #000;
-  box-shadow: 0 var(--px) 0 0 var(--gold-lo);
-}
-
-.logo {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.logo-mark {
-  width: 32px;
-  height: 32px;
-  animation: bob 1.6s steps(2) infinite;
-}
-
-.logo-text {
-  font-family: var(--font-pixel);
-  font-size: 14px;
-  line-height: 1;
-  color: var(--gold-hi);
-  text-shadow:
-    2px 2px 0 var(--gold-lo),
-    4px 4px 0 #000;
-}
-
-.logo-text small {
-  display: block;
-  margin-top: 6px;
-  font-size: 7px;
-  color: var(--hex);
-  text-shadow: 1px 1px 0 #000;
-  letter-spacing: 1px;
-}
-
-.nav {
-  display: flex;
-  gap: 4px;
-}
-
-.nav a {
-  font-family: var(--font-pixel);
-  font-size: 9px;
-  padding: 10px 10px;
-  color: var(--muted);
-  text-transform: uppercase;
-}
-
-.nav a:hover,
-.nav a[aria-current="page"] {
-  color: var(--ink);
-}
-
-.nav a[aria-current="page"] {
-  background: var(--panel-2);
-  box-shadow:
-    0 calc(var(--px) * -1) 0 0 #000,
-    0 var(--px) 0 0 #000,
-    calc(var(--px) * -1) 0 0 0 #000,
-    var(--px) 0 0 0 #000,
-    inset 0 calc(var(--px) * -1) 0 0 var(--gold);
-}
-
 /* ---------- Vista en directo ---------- */
 
 .live-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 360px;
-  gap: 16px;
-  padding: 16px;
-  height: calc(100vh - var(--header-h) - var(--px));
+  grid-template-columns: minmax(0, 1fr) 380px;
+  gap: 24px;
+  padding: 8px 28px 28px 20px;
+  height: calc(100vh - var(--header-h));
   min-height: 560px;
 }
 
 .player-col {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 18px;
   min-width: 0;
   min-height: 0;
 }
 
 .player-frame {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 16px 16px;
+}
+
+.player-frame .label {
+  margin-bottom: 10px;
+  color: #a8a8a0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.player-screen {
   position: relative;
   flex: 1;
   min-height: 0;
-  background: #000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  background: #101010;
+  border: 2px solid #111;
+  outline: 2px solid #4a4a46;
 }
 
-.player-frame iframe {
+.player-screen iframe {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -355,20 +488,29 @@ button {
 }
 
 .player-frame:fullscreen {
-  margin: 0;
+  padding: 0;
+  border: 0;
   box-shadow: none;
 }
 
+.player-frame:fullscreen .label {
+  display: none;
+}
+
 .player-placeholder {
-  text-align: center;
-  padding: 24px;
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #8a8a86;
 }
 
 .player-bar {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
+  gap: 14px;
+  padding: 10px 12px;
 }
 
 .player-bar .now {
@@ -377,63 +519,30 @@ button {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 0 6px;
   overflow: hidden;
 }
 
-.live-dot {
-  width: 8px;
-  height: 8px;
-  background: var(--red);
-  box-shadow: 0 0 0 2px #000;
-  animation: blink 1s steps(1) infinite;
-  flex: none;
-}
-
-.badge {
-  display: inline-block;
-  padding: 3px 5px 2px;
-  font-family: var(--font-pixel);
-  font-size: 7px;
-  line-height: 1.2;
-  text-transform: uppercase;
-  color: #fff;
-  background: var(--panel-3);
-  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.35);
+.player-bar .now .name {
+  font-size: 24px;
   white-space: nowrap;
 }
 
-.badge.es {
-  background: #c8102e;
-}
-.badge.en {
-  background: #1f4fa3;
-}
-.badge.oficial {
-  background: var(--gold-lo);
-  color: var(--gold-hi);
-}
-.badge.cooficial {
-  background: var(--hex-lo);
-}
-.badge.live {
-  background: var(--red);
-}
-
-/* Menú de selección de emisión */
+/* Menú de emisiones */
 .stream-menu {
   position: absolute;
-  right: 8px;
-  bottom: calc(100% + 12px);
-  width: min(360px, calc(100vw - 32px));
-  max-height: 60vh;
+  right: 0;
+  bottom: calc(100% + 14px);
+  width: min(380px, calc(100vw - 40px));
+  max-height: 62vh;
   overflow: auto;
   z-index: 10;
-  padding: 10px 6px;
+  padding: 12px 10px;
 }
 
 .stream-menu h3 {
-  margin: 4px 8px 8px;
+  margin: 6px 6px 8px;
+  color: var(--muted);
+  font-weight: normal;
 }
 
 .stream-option {
@@ -441,18 +550,33 @@ button {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 8px;
+  padding: 6px 8px;
   text-align: left;
-}
-
-.stream-option:hover,
-.stream-option[aria-pressed="true"] {
-  background: var(--panel-2);
+  font-size: 22px;
 }
 
 .stream-option .name {
   flex: 1;
-  font-size: 17px;
+}
+
+.stream-option:hover,
+.stream-option[aria-pressed="true"] {
+  background: var(--card-2);
+}
+
+/* Cursor ▶ tipo menú de Pokémon */
+.cursor::before {
+  content: "▶";
+  font-size: 14px;
+  width: 16px;
+  display: inline-block;
+  visibility: hidden;
+}
+
+.cursor:hover::before,
+.cursor[aria-pressed="true"]::before {
+  visibility: visible;
+  animation: blink 0.8s steps(1) infinite;
 }
 
 /* ---------- Panel lateral ---------- */
@@ -461,51 +585,49 @@ button {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  overflow: hidden;
+}
+
+.side-head {
+  padding: 14px 16px 6px;
+}
+
+.side-head .px-title {
+  font-size: 16px;
+  color: var(--muted);
 }
 
 .side-tabs {
   display: flex;
-  border-bottom: var(--px) solid #000;
+  gap: 10px;
+  padding: 8px 16px 12px;
 }
 
-.side-tabs button {
+.side-tabs .btn {
   flex: 1;
-  padding: 12px 4px 10px;
-  font-family: var(--font-pixel);
-  font-size: 8px;
-  text-transform: uppercase;
-  color: var(--muted);
-  background: var(--bg-2);
-}
-
-.side-tabs button[aria-selected="true"] {
-  color: var(--ink);
-  background: var(--panel);
-  box-shadow: inset 0 calc(var(--px) * -1) 0 0 var(--gold);
 }
 
 .side-body {
   flex: 1;
   overflow: auto;
-  padding: 8px;
+  padding: 2px 16px 12px;
   scrollbar-width: thin;
-  scrollbar-color: var(--gold-lo) transparent;
+  scrollbar-color: var(--muted) transparent;
 }
 
 .side-foot {
-  padding: 8px 10px;
-  border-top: 2px solid #000;
+  padding: 8px 16px 10px;
+  border-top: 2px solid var(--card-3);
   display: flex;
   justify-content: space-between;
   gap: 8px;
+  color: var(--muted);
 }
 
 .filter-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 2px;
-  margin-bottom: 6px;
+  gap: 4px;
+  margin-bottom: 10px;
 }
 
 .chip {
@@ -513,22 +635,21 @@ button {
   font-family: var(--font-pixel);
   font-size: 7px;
   text-transform: uppercase;
-  color: var(--muted);
-  background: var(--bg-2);
-  box-shadow: inset 0 0 0 2px var(--line-dim);
+  color: var(--ink-2);
+  background: var(--card-2);
+  border: 2px solid transparent;
 }
 
 .chip[aria-pressed="true"] {
-  color: #1a1206;
-  background: var(--gold);
-  box-shadow: inset 0 -2px 0 var(--gold-lo);
+  border-color: var(--line);
+  background: var(--card);
 }
 
 /* Tabla de equipos */
 .team-table {
   width: 100%;
   border-collapse: separate;
-  border-spacing: 0 4px;
+  border-spacing: 0 6px;
 }
 
 .team-table th {
@@ -538,22 +659,32 @@ button {
   text-transform: uppercase;
   color: var(--muted);
   text-align: left;
-  padding: 2px 4px;
+  padding: 0 4px;
 }
 
 .team-table th button {
-  font-family: inherit;
+  font: inherit;
   text-transform: inherit;
+  color: inherit;
 }
 
 .team-table th button[data-active="true"] {
-  color: var(--gold-hi);
+  color: var(--ink);
 }
 
 .team-table td {
   padding: 6px 4px;
-  background: var(--panel-2);
   vertical-align: middle;
+  border-top: 2px solid #5c5c56;
+  border-bottom: 2px solid #5c5c56;
+}
+
+.team-table td:first-child {
+  border-left: 2px solid #5c5c56;
+}
+
+.team-table td:last-child {
+  border-right: 2px solid #5c5c56;
 }
 
 .team-table tr.row {
@@ -561,26 +692,24 @@ button {
 }
 
 .team-table tr.row:hover td {
-  background: var(--panel-3);
+  background: #efece2;
 }
 
 .team-table tr.row[aria-expanded="true"] td {
-  background: #2d2a22;
+  background: #f4f1e6;
+  border-color: var(--line);
 }
 
-.team-table td:first-child {
-  box-shadow: inset var(--px) 0 0 0 var(--line-dim);
-}
-
-.team-table tr.row[aria-expanded="true"] td:first-child {
-  box-shadow: inset var(--px) 0 0 0 var(--gold);
+.team-table tr.detail td {
+  border: 0;
+  padding: 0 0 4px;
 }
 
 .rank {
   font-family: var(--font-pixel);
   font-size: 8px;
   color: var(--muted);
-  width: 22px;
+  width: 26px;
   text-align: center;
 }
 
@@ -592,11 +721,12 @@ button {
 }
 
 .team-logo {
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   object-fit: contain;
   flex: none;
   image-rendering: auto;
+  filter: drop-shadow(1px 1px 0 rgba(0, 0, 0, 0.25));
 }
 
 .team-logo.fallback {
@@ -604,13 +734,13 @@ button {
   place-items: center;
   font-family: var(--font-pixel);
   font-size: 6px;
-  background: var(--panel-3);
-  color: var(--gold-hi);
+  color: var(--ink-2);
+  background: var(--card-2);
+  filter: none;
 }
 
 .team-code {
-  font-family: var(--font-pixel);
-  font-size: 9px;
+  font-size: 22px;
 }
 
 .record {
@@ -620,180 +750,97 @@ button {
 }
 
 .record .w {
-  color: var(--green);
+  color: #2f8f2f;
 }
 .record .l {
-  color: var(--red);
-}
-
-/* Barra de "PS" para el winrate */
-.hp {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.hp-label {
-  font-family: var(--font-pixel);
-  font-size: 6px;
-  color: var(--amber);
-  background: #000;
-  padding: 2px 2px 1px;
-}
-
-.hp-track {
-  position: relative;
-  flex: 1;
-  height: 6px;
-  min-width: 48px;
-  background: #3a3a3a;
-  box-shadow: 0 0 0 2px #000;
-}
-
-.hp-fill {
-  position: absolute;
-  inset: 0 auto 0 0;
-  background: var(--green);
-  box-shadow: inset 0 -2px 0 var(--green-lo);
-  transition: width 400ms steps(8);
-}
-
-.hp-fill.mid {
-  background: var(--amber);
-  box-shadow: inset 0 -2px 0 #8a5e10;
-}
-
-.hp-fill.low {
-  background: var(--red);
-  box-shadow: inset 0 -2px 0 var(--red-lo);
+  color: #c03028;
 }
 
 .form {
   display: flex;
-  gap: 2px;
+  gap: 3px;
+  margin-top: 5px;
 }
 
 .form i {
   width: 8px;
   height: 8px;
   display: block;
-  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.3);
+  border: 1px solid #000;
 }
 
 .form i.W {
-  background: var(--green);
+  background: var(--hp);
 }
 .form i.L {
-  background: var(--red);
+  background: var(--hp-low);
 }
 
-/* Ficha desplegada tipo Pokédex */
+/* Ficha desplegada, como la carta de inicial */
 .dex-card {
-  padding: 10px;
-  background: var(--bg-2);
-  box-shadow: inset 0 0 0 2px var(--gold-lo);
-}
-
-.dex-card .dex-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 8px;
-}
-
-.dex-card .dex-head img,
-.dex-card .dex-head .team-logo {
-  width: 40px;
-  height: 40px;
-}
-
-.dex-stats {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 4px;
-  margin: 8px 0;
-}
-
-.dex-stat {
-  padding: 6px 4px;
-  background: var(--panel);
+  padding: 14px;
+  background: #f4f1e6;
+  border: 2px solid var(--line);
+  border-top: 0;
   text-align: center;
 }
 
-.dex-stat b {
-  display: block;
-  font-family: var(--font-pixel);
-  font-size: 10px;
-  font-weight: normal;
-  margin-top: 4px;
-  color: var(--gold-hi);
+.dex-card .sprite {
+  display: grid;
+  place-items: center;
+  height: 64px;
+  margin-bottom: 6px;
+}
+
+.dex-card .sprite .team-logo {
+  width: 56px;
+  height: 56px;
+}
+
+.dex-card .stats {
+  margin: 12px 0;
+  text-align: left;
 }
 
 .roster {
   display: grid;
-  gap: 2px;
-  margin-top: 6px;
+  gap: 4px;
+  margin-top: 10px;
+  text-align: left;
 }
 
 .roster-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 3px 4px;
-  background: var(--panel);
+  padding: 4px 6px;
+  border: 2px solid #5c5c56;
 }
 
 .roster-row .pname {
   flex: 1;
-  font-size: 15px;
+  font-size: 20px;
 }
 
-/* Insignias de rol, al estilo de los tipos de Pokémon */
-.role {
-  min-width: 40px;
-  text-align: center;
-  padding: 3px 4px 2px;
-  font-family: var(--font-pixel);
-  font-size: 6px;
-  text-transform: uppercase;
-  color: #fff;
-  box-shadow:
-    inset 0 -2px 0 rgba(0, 0, 0, 0.35),
-    0 0 0 1px #000;
+.roster-row .real {
+  font-size: 16px;
+  color: var(--muted);
 }
 
-.role.top {
-  background: #c03028;
-}
-.role.jungle {
-  background: #4e8a34;
-}
-.role.mid {
-  background: #6890f0;
-}
-.role.bottom {
-  background: #d8a038;
-}
-.role.support {
-  background: #a890f0;
-}
-.role.none {
-  background: #68686a;
-}
-
-/* Partidos */
+/* Partidos, con la caja interior de "movimiento" */
 .match {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: 6px;
-  padding: 8px 6px;
-  margin-bottom: 4px;
-  background: var(--panel-2);
+  padding: 8px 8px;
+  margin-bottom: 8px;
+  border: 2px solid #5c5c56;
 }
 
 .match.live {
-  box-shadow: inset 0 0 0 2px var(--red);
+  border-color: var(--red);
+  background: #f6e6e0;
 }
 
 .match .side {
@@ -808,115 +855,181 @@ button {
 }
 
 .match .side.loser {
-  opacity: 0.45;
+  opacity: 0.4;
 }
 
 .match .score {
   font-family: var(--font-pixel);
   font-size: 10px;
   text-align: center;
-  min-width: 52px;
+  min-width: 56px;
 }
 
 .match .meta {
   grid-column: 1 / -1;
   display: flex;
   justify-content: space-between;
+  align-items: center;
   margin-top: 2px;
 }
 
 .day-sep {
-  margin: 10px 2px 6px;
-  color: var(--gold);
+  margin: 14px 0 8px;
+  color: var(--ink-2);
 }
 
-/* Aviso de datos de demostración */
+.day-sep:first-child {
+  margin-top: 4px;
+}
+
 .demo-banner {
-  margin: 0 0 8px;
+  margin: 0 0 10px;
   padding: 8px;
-  background: #2a2110;
-  box-shadow: inset 0 0 0 2px var(--amber);
-  color: var(--amber);
+  color: #6a5010;
+  background: #f8e8a8;
+  border: 2px solid #b89a30;
 }
 
 /* ---------- Páginas secundarias ---------- */
 
 .page {
-  max-width: 1100px;
+  max-width: 1180px;
   margin: 0 auto;
-  padding: 24px 16px 48px;
+  padding: 24px 20px 64px;
 }
 
+/* Bocadillo de diálogo */
 .dialog {
-  padding: 18px 20px;
-  font-size: 18px;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 16px 20px;
+  font-size: 22px;
 }
 
 .dialog .next {
   display: block;
   text-align: right;
-  color: var(--gold-hi);
+  font-size: 14px;
   animation: bob 0.8s steps(2) infinite;
 }
 
 .grid-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 16px;
-  margin-top: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 22px;
+  margin-top: 28px;
 }
 
-.team-card {
-  padding: 12px;
+/* Carta de inicial: sprite, nombre, nivel, tipos, stats y barra de PS */
+.starter {
+  padding: 18px 16px 16px;
+  text-align: center;
 }
 
-.team-card .no {
-  color: var(--muted);
+.starter .sprite {
+  height: 76px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 10px;
+}
+
+.starter .sprite .team-logo {
+  width: 64px;
+  height: 64px;
+}
+
+.starter .name {
+  font-size: 24px;
+}
+
+.starter .lv {
+  font-family: var(--font-pixel);
+  font-size: 9px;
+  color: var(--ink-2);
+  margin: 6px 0 10px;
+}
+
+.starter .stats {
+  margin: 12px 0 14px;
+  text-align: left;
+}
+
+.starter .move {
+  margin-top: 14px;
+  padding: 8px;
 }
 
 .press-start {
-  margin-top: 24px;
+  margin-top: 28px;
+  font-family: var(--font-pixel);
+  font-size: 12px;
+  color: var(--title);
   text-align: center;
-  color: var(--gold-hi);
   animation: blink 1s steps(1) infinite;
 }
 
 /* ---------- Responsive ---------- */
 
-@media (max-width: 960px) {
+@media (max-width: 1000px) {
   .live-layout {
     grid-template-columns: 1fr;
     height: auto;
+    padding: 8px 20px 28px;
   }
 
   .player-frame {
+    flex: none;
+  }
+
+  .player-screen {
     flex: none;
     aspect-ratio: 16 / 9;
   }
 
   .side-panel {
-    max-height: 70vh;
+    max-height: 75vh;
   }
 }
 
-@media (max-width: 560px) {
+@media (max-width: 640px) {
   :root {
-    --header-h: 96px;
+    --header-h: 112px;
   }
 
   .site-header {
-    flex-direction: column;
-    justify-content: center;
-    gap: 6px;
+    height: auto;
+    flex-wrap: wrap;
+    align-content: center;
+    gap: 10px;
+    padding: 8px 16px;
   }
 
-  .nav a {
-    font-size: 8px;
-    padding: 8px 6px;
-  }
-
-  .player-bar .now .muted {
+  .header-spacer {
     display: none;
+  }
+
+  .nav {
+    order: 3;
+    width: 100%;
+  }
+
+  .nav .btn {
+    flex: 1;
+    padding: 8px 6px;
+    font-size: 8px;
+  }
+
+  .live-layout {
+    padding: 8px 16px 24px;
+  }
+
+  .player-bar {
+    flex-wrap: wrap;
+  }
+
+  .player-bar .now {
+    width: 100%;
+    flex: none;
   }
 }
 

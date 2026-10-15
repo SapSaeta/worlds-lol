@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { NextMatchChip } from "@/components/NextMatchChip";
 import { TOURNAMENT } from "@/config/tournament";
 
 const LINKS = [
@@ -15,16 +16,20 @@ export function SiteHeader() {
   return (
     <header className="site-header">
       <Link href="/" className="logo" aria-label="Inicio">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo.svg" alt="" className="logo-mark" />
+        <span className="icon-btn">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.svg" alt="" />
+        </span>
         <span className="logo-text">
           WORLDS·LOL
           <small>{TOURNAMENT.name} en español</small>
         </span>
       </Link>
+      <span className="header-spacer" />
+      <NextMatchChip />
       <nav className="nav">
         {LINKS.map((l) => (
-          <Link key={l.href} href={l.href} className="cursor" aria-current={path === l.href ? "page" : undefined}>
+          <Link key={l.href} href={l.href} className="btn" aria-current={path === l.href ? "page" : undefined}>
             {l.label}
           </Link>
         ))}

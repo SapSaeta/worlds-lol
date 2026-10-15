@@ -1,20 +1,11 @@
 "use client";
 
 import { Fragment, useEffect, useMemo, useState } from "react";
+import { HpBar, ROLE_ORDER, RoleBadge, StatBars } from "@/components/Pixel";
 import { TeamLogo } from "@/components/TeamLogo";
 import type { Match, Team, WorldsData } from "@/lib/types";
 
 type SortKey = "record" | "games" | "name";
-
-const ROLE_LABEL: Record<string, string> = {
-  top: "Top",
-  jungle: "Jungla",
-  mid: "Mid",
-  bottom: "ADC",
-  support: "Supp",
-};
-
-const ROLE_ORDER = ["top", "jungle", "mid", "bottom", "support"];
 
 function winrate(t: Team) {
   const total = t.wins + t.losses;
@@ -43,63 +34,50 @@ function useMounted() {
 const fmtTime = (iso: string, mounted: boolean) => (mounted ? timeFmt.format(new Date(iso)) : "--:--");
 const fmtDay = (iso: string, mounted: boolean) => (mounted ? dayFmt.format(new Date(iso)) : "");
 
-function HpBar({ value }: { value: number }) {
-  const cls = value >= 0.5 ? "" : value >= 0.25 ? "mid" : "low";
-  return (
-    <div className="hp" title={`${Math.round(value * 100)}% de victorias`}>
-      <span className="hp-label">WR</span>
-      <span className="hp-track">
-        <span className={`hp-fill ${cls}`} style={{ width: `${Math.max(value * 100, 2)}%` }} />
-      </span>
-    </div>
-  );
-}
-
 function TeamDex({ team, matches }: { team: Team; matches: Match[] }) {
   const next = matches.find((m) => m.state !== "completed" && m.teams.some((t) => t.code === team.code));
   const rival = next?.teams.find((t) => t.code !== team.code);
   const mounted = useMounted();
   const players = [...team.players].sort((a, b) => ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role));
+  const games = team.gameWins + team.gameLosses;
   return (
     <div className="dex-card">
-      <div className="dex-head">
-        <TeamLogo code={team.code} image={team.image} size={40} />
-        <div>
-          <div className="px-title">{team.name}</div>
-          {team.region ? <span className="badge oficial">{team.region}</span> : null}
-        </div>
+      <div className="sprite">
+        <TeamLogo code={team.code} image={team.image} size={56} />
       </div>
-      <div className="dex-stats">
-        <div className="dex-stat">
-          <span className="px-small muted">Series</span>
-          <b>
-            {team.wins}-{team.losses}
-          </b>
-        </div>
-        <div className="dex-stat">
-          <span className="px-small muted">Partidas</span>
-          <b>
-            {team.gameWins}-{team.gameLosses}
-          </b>
-        </div>
-        <div className="dex-stat">
-          <span className="px-small muted">Victorias</span>
-          <b>{Math.round(winrate(team) * 100)}%</b>
-        </div>
+      <div className="bold" style={{ fontSize: 24 }}>
+        {team.name}
       </div>
+      {team.region ? (
+        <div style={{ marginTop: 6 }}>
+          <span className="badge region">{team.region}</span>
+        </div>
+      ) : null}
+      <StatBars
+        stats={[
+          { k: "Series", v: team.wins, max: Math.max(team.wins + team.losses, 1), text: `${team.wins}-${team.losses}` },
+          { k: "Partidas", v: team.gameWins, max: Math.max(games, 1), text: `${team.gameWins}-${team.gameLosses}` },
+          { k: "Win%", v: winrate(team) * 100, max: 100, text: `${Math.round(winrate(team) * 100)}%`, gold: true },
+        ]}
+      />
       {next && rival ? (
-        <p style={{ margin: "6px 0" }}>
-          <span className="px-small muted">Siguiente: </span>
-          vs <strong>{rival.code}</strong> · {next.state === "inProgress" ? "¡en juego!" : `${fmtDay(next.startTime, mounted)}, ${fmtTime(next.startTime, mounted)}`}
-        </p>
+        <div className="inset" style={{ padding: 8 }}>
+          <div className="px-small muted">Siguiente combate</div>
+          <div className="bold" style={{ fontSize: 22, marginTop: 4 }}>
+            vs {rival.code}
+          </div>
+          <div className="px-small" style={{ color: "var(--ink-2)" }}>
+            {next.state === "inProgress" ? "¡En juego!" : `${fmtDay(next.startTime, mounted)} · ${fmtTime(next.startTime, mounted)}`}
+          </div>
+        </div>
       ) : null}
       {players.length ? (
         <div className="roster">
           {players.map((p) => (
             <div className="roster-row" key={p.name + p.role}>
-              <span className={`role ${ROLE_LABEL[p.role] ? p.role : "none"}`}>{ROLE_LABEL[p.role] ?? p.role ?? "—"}</span>
-              <span className="pname">{p.name}</span>
-              {p.realName ? <span className="muted" style={{ fontSize: 13 }}>{p.realName}</span> : null}
+              <RoleBadge role={p.role} />
+              <span className="pname bold">{p.name}</span>
+              {p.realName ? <span className="real">{p.realName}</span> : null}
             </div>
           ))}
         </div>
@@ -160,15 +138,15 @@ function StandingsTab({ data }: { data: WorldsData }) {
                 <td>
                   <div className="team-cell">
                     <TeamLogo code={t.code} image={t.image} />
-                    <span className="team-code">{t.code}</span>
+                    <span className="team-code bold">{t.code}</span>
                   </div>
                 </td>
                 <td className="record">
                   <span className="w">{t.wins}</span>-<span className="l">{t.losses}</span>
                 </td>
-                <td style={{ width: 96 }}>
-                  <HpBar value={winrate(t)} />
-                  <div className="form" style={{ marginTop: 4 }}>
+                <td style={{ width: 104 }}>
+                  <HpBar value={t.wins + t.losses ? winrate(t) : 1} />
+                  <div className="form">
                     {t.form.slice(-5).map((f, j) => (
                       <i key={j} className={f} title={f === "W" ? "Victoria" : "Derrota"} />
                     ))}
@@ -176,8 +154,8 @@ function StandingsTab({ data }: { data: WorldsData }) {
                 </td>
               </tr>
               {open === t.code ? (
-                <tr>
-                  <td colSpan={4} style={{ padding: 0, background: "transparent" }}>
+                <tr className="detail">
+                  <td colSpan={4}>
                     <TeamDex team={t} matches={data.matches} />
                   </td>
                 </tr>
@@ -213,7 +191,7 @@ function MatchesTab({ data }: { data: WorldsData }) {
           lastDay = day;
           return (
             <Fragment key={m.id}>
-              {showDay && day ? <div className="muted" style={{ margin: "6px 2px 4px", fontSize: 13 }}>{day}</div> : null}
+              {showDay && day ? <div className="muted" style={{ margin: "8px 0 6px", fontSize: 18 }}>{day}</div> : null}
               <MatchRow m={m} mounted={mounted} />
             </Fragment>
           );
@@ -240,8 +218,8 @@ function MatchRow({ m, mounted }: { m: Match; mounted: boolean }) {
   return (
     <div className={`match ${m.state === "inProgress" ? "live" : ""}`}>
       <div className={`side ${aLost ? "loser" : ""}`}>
-        <TeamLogo code={a.code} image={a.image} size={20} />
-        <span className="team-code">{a.code}</span>
+        <TeamLogo code={a.code} image={a.image} size={24} />
+        <span className="team-code bold">{a.code}</span>
       </div>
       <div className="score">
         {m.state === "unstarted" ? (
@@ -253,8 +231,8 @@ function MatchRow({ m, mounted }: { m: Match; mounted: boolean }) {
         )}
       </div>
       <div className={`side right ${bLost ? "loser" : ""}`}>
-        <span className="team-code">{b.code}</span>
-        <TeamLogo code={b.code} image={b.image} size={20} />
+        <span className="team-code bold">{b.code}</span>
+        <TeamLogo code={b.code} image={b.image} size={24} />
       </div>
       <div className="meta px-small muted">
         <span>{m.blockName}</span>
@@ -269,12 +247,15 @@ export function TeamsPanel({ data, loading }: { data: WorldsData; loading: boole
   const mounted = useMounted();
   const updated = fmtTime(data.updatedAt, mounted);
   return (
-    <aside className="side-panel pixel-box">
+    <aside className="side-panel card">
+      <div className="side-head">
+        <div className="px-title">{tab === "tabla" ? "EQUIPOS" : "COMBATES"}</div>
+      </div>
       <div className="side-tabs" role="tablist">
-        <button role="tab" aria-selected={tab === "tabla"} onClick={() => setTab("tabla")}>
+        <button className="btn sm" role="tab" aria-pressed={tab === "tabla"} onClick={() => setTab("tabla")}>
           Clasificación
         </button>
-        <button role="tab" aria-selected={tab === "partidos"} onClick={() => setTab("partidos")}>
+        <button className="btn sm" role="tab" aria-pressed={tab === "partidos"} onClick={() => setTab("partidos")}>
           Partidos
         </button>
       </div>
@@ -284,7 +265,7 @@ export function TeamsPanel({ data, loading }: { data: WorldsData; loading: boole
         ) : null}
         {tab === "tabla" ? <StandingsTab data={data} /> : <MatchesTab data={data} />}
       </div>
-      <div className="side-foot px-small muted">
+      <div className="side-foot px-small">
         <span>{data.source === "demo" ? "Demo" : "lolesports.com"}</span>
         <span>{loading ? "Actualizando…" : `Act. ${updated}`}</span>
       </div>
