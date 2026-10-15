@@ -959,6 +959,168 @@ button {
   padding: 8px;
 }
 
+/* ---------- Worlddex ---------- */
+
+.tour-switch,
+.dex-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.tour-switch .btn {
+  font-size: 8px;
+}
+
+.dex-tabs {
+  margin-top: 22px;
+}
+
+.dex-tabs .btn[aria-selected="true"] {
+  background: var(--title);
+}
+
+.dex-filters {
+  max-width: 820px;
+  margin: 24px auto 0;
+  padding: 12px 14px 4px;
+}
+
+.dex-filters .filter-row {
+  align-items: center;
+  gap: 6px;
+}
+
+.sort-label {
+  margin-left: 8px;
+}
+
+.dex-hint {
+  margin: 2px 0 10px;
+}
+
+.select {
+  padding: 4px 6px 3px;
+  font-family: var(--font-pixel);
+  font-size: 8px;
+  color: var(--ink);
+  background: var(--card);
+  border: 2px solid var(--line);
+  border-radius: 0;
+}
+
+.note {
+  margin-top: 24px;
+  font-size: 20px;
+}
+
+.note a {
+  color: var(--slate);
+}
+
+.dex-no {
+  text-align: left;
+}
+
+.pixel-img {
+  display: block;
+  image-rendering: pixelated;
+}
+
+.starter .champ-title {
+  min-height: 2.8em;
+  font-size: 8px;
+  line-height: 1.6;
+}
+
+.type-row {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* Clases de campeón con colores de tipo */
+.badge.t-Fighter {
+  background: #c03028;
+}
+.badge.t-Tank {
+  background: #b8a038;
+}
+.badge.t-Mage {
+  background: #6890f0;
+}
+.badge.t-Assassin {
+  background: #705848;
+}
+.badge.t-Marksman {
+  background: #f08030;
+}
+.badge.t-Support {
+  background: #78c850;
+}
+
+.move-title {
+  font-size: 20px;
+}
+
+.move-foot {
+  margin-top: 6px;
+}
+
+.mini-roster {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  text-align: left;
+}
+
+.mini-roster li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+  font-size: 18px;
+  line-height: 1.1;
+}
+
+.mini-roster .role,
+.mini-roster .badge {
+  min-width: 46px;
+  flex: none;
+  font-size: 6px;
+  text-align: center;
+}
+
+.mini-roster .bold {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.champ-mini {
+  list-style: none;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 8px 0 0;
+  padding: 0;
+}
+
+.champ-mini li {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+}
+
+.champ-mini .pixel-img {
+  border: 2px solid var(--line);
+}
+
 .press-start {
   margin-top: 28px;
   font-family: var(--font-pixel);

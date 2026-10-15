@@ -2,7 +2,7 @@
 // la clave es la misma que usa la web oficial y puede cambiar sin aviso, por eso
 // todo el parseo es defensivo y, si algo falla, se sirven datos de demostración.
 
-import { TOURNAMENT } from "@/config/tournament";
+import { TOURNAMENT, type TournamentConfig } from "@/config/tournament";
 import { demoData } from "@/lib/demo";
 import { buildTeams } from "@/lib/teams";
 import type { LiveStream, Match, MatchTeam, Player, WorldsData } from "@/lib/types";
@@ -11,9 +11,10 @@ const BASE = "https://esports-api.lolesports.com/persisted/gw";
 const API_KEY = process.env.LOLESPORTS_API_KEY ?? "0TvQnueqKa5mxJntVWt0w4LpLfEkrV1Ta8rQBb9Z";
 const HL = "es-ES";
 
-type Json = Record<string, any>;
+export type Json = Record<string, any>;
 
-async function api(path: string, params: Record<string, string>, revalidate: number): Promise<Json> {
+/** revalidate en segundos, o false para datos que ya no cambian. */
+export async function api(path: string, params: Record<string, string>, revalidate: number | false): Promise<Json> {
   const qs = new URLSearchParams({ hl: HL, ...params });
   const res = await fetch(`${BASE}/${path}?${qs}`, {
     headers: { "x-api-key": API_KEY },
@@ -23,11 +24,11 @@ async function api(path: string, params: Record<string, string>, revalidate: num
   return res.json();
 }
 
-const https = (url: string | undefined) => (url ?? "").replace(/^http:\/\//, "https://");
+export const https = (url: string | undefined) => (url ?? "").replace(/^http:\/\//, "https://");
 
-function inWindow(iso: string) {
-  const t = Date.parse(iso);
-  return t >= Date.parse(TOURNAMENT.start) && t <= Date.parse(TOURNAMENT.end);
+function inWindow(t: TournamentConfig, iso: string) {
+  const ms = Date.parse(iso);
+  return ms >= Date.parse(t.start) && ms <= Date.parse(t.end);
 }
 
 function toMatch(ev: Json): Match | null {
@@ -51,68 +52,90 @@ function toMatch(ev: Json): Match | null {
   };
 }
 
-async function fetchSchedule(): Promise<Match[]> {
-  const first = await api("getSchedule", { leagueId: TOURNAMENT.leagueId }, 60);
+export async function fetchSchedule(t: TournamentConfig = TOURNAMENT): Promise<Match[]> {
+  // Los partidos ya jugados de torneos pasados no cambian: se cachean un día.
+  const ttl = Date.parse(t.end) < Date.now() ? 86400 : 60;
+  const first = await api("getSchedule", { leagueId: t.leagueId }, ttl);
   const events: Json[] = [...(first.data?.schedule?.events ?? [])];
-  // Recorremos páginas hacia atrás y hacia delante para tener el torneo entero.
+  const start = Date.parse(t.start);
+  const end = Date.parse(t.end);
+  // Recorremos páginas hacia atrás y hacia delante hasta salir de la ventana del torneo.
   for (const dir of ["older", "newer"] as const) {
     let token: string | undefined = first.data?.schedule?.pages?.[dir];
-    for (let i = 0; token && i < 6; i++) {
-      const page = await api("getSchedule", { leagueId: TOURNAMENT.leagueId, pageToken: token }, 60);
+    for (let i = 0; token && i < 8; i++) {
+      const page = await api("getSchedule", { leagueId: t.leagueId, pageToken: token }, ttl);
       const evs: Json[] = page.data?.schedule?.events ?? [];
       events.push(...evs);
-      if (!evs.some((e) => inWindow(e.startTime))) break;
+      const times = evs.map((e) => Date.parse(e.startTime));
+      if (!times.length) break;
+      if (dir === "older" && Math.max(...times) < start) break;
+      if (dir === "newer" && Math.min(...times) > end) break;
       token = page.data?.schedule?.pages?.[dir];
     }
   }
   const seen = new Set<string>();
   return events
-    .filter((e) => inWindow(e.startTime))
+    .filter((e) => inWindow(t, e.startTime))
     .map(toMatch)
     .filter((m): m is Match => !!m && !seen.has(m.id) && !!seen.add(m.id))
     .sort((a, b) => Date.parse(a.startTime) - Date.parse(b.startTime));
 }
 
-async function fetchLiveStreams(): Promise<LiveStream[]> {
+async function fetchLiveStreams(t: TournamentConfig): Promise<LiveStream[]> {
   const live = await api("getLive", {}, 60);
   const events: Json[] = live.data?.schedule?.events ?? [];
   return events
-    .filter((e) => e.league?.id === TOURNAMENT.leagueId || /world/i.test(e.league?.slug ?? ""))
+    .filter((e) => e.league?.id === t.leagueId || /world/i.test(e.league?.slug ?? ""))
     .flatMap((e) => (e.streams ?? []) as Json[])
     .filter((s) => typeof s.locale === "string" && s.locale.startsWith("es"))
     .map((s) => ({ provider: s.provider, channel: s.parameter, locale: s.locale }));
 }
 
-/** Slugs de los equipos del torneo vigente, vía standings. */
-async function fetchTeamSlugs(): Promise<string[]> {
-  const t = await api("getTournamentsForLeague", { leagueId: TOURNAMENT.leagueId }, 3600);
-  const tournaments: Json[] = t.data?.leagues?.[0]?.tournaments ?? [];
-  const current = tournaments.find((x) => inWindow(`${x.startDate}T12:00:00Z`)) ?? tournaments[0];
-  if (!current) return [];
-  const s = await api("getStandings", { tournamentId: current.id }, 600);
+/** Slugs de los equipos del torneo según la clasificación oficial. */
+export async function fetchTeamSlugs(t: TournamentConfig): Promise<string[]> {
+  const s = await api("getStandings", { tournamentId: t.tournamentId }, 600);
   const slugs = new Set<string>();
   for (const stage of s.data?.standings?.[0]?.stages ?? [])
-    for (const section of stage.sections ?? [])
+    for (const section of stage.sections ?? []) {
       for (const r of section.rankings ?? []) for (const team of r.teams ?? []) if (team.slug) slugs.add(team.slug);
+      for (const m of section.matches ?? []) for (const team of m.teams ?? []) if (team.slug && team.slug !== "tbd") slugs.add(team.slug);
+    }
   return [...slugs];
 }
 
-async function fetchTeamDetails(slug: string) {
-  const r = await api("getTeams", { id: slug }, 86400);
+export type TeamDetails = {
+  id: string;
+  code: string;
+  name: string;
+  image: string;
+  region: string | null;
+  players: (Player & { id: string })[];
+};
+
+/** Ficha de un equipo por slug o por id, con su plantilla. */
+export async function fetchTeamDetails(idOrSlug: string): Promise<TeamDetails | null> {
+  const r = await api("getTeams", { id: idOrSlug }, 86400);
   const t: Json | undefined = r.data?.teams?.[0];
   if (!t) return null;
-  const players: Player[] = (t.players ?? []).map((p: Json) => ({
-    name: p.summonerName ?? "",
-    realName: [p.firstName, p.lastName].filter(Boolean).join(" "),
-    role: p.role ?? "",
-    image: https(p.image),
-  }));
-  return { code: t.code as string, name: (t.name ?? t.code) as string, image: https(t.image), region: (t.homeLeague?.region ?? t.homeLeague?.name ?? null) as string | null, players };
+  return {
+    id: String(t.id),
+    code: t.code,
+    name: t.name ?? t.code,
+    image: https(t.image),
+    region: t.homeLeague?.name ?? t.homeLeague?.region ?? null,
+    players: (t.players ?? []).map((p: Json) => ({
+      id: String(p.id),
+      name: p.summonerName ?? "",
+      realName: [p.firstName, p.lastName].filter(Boolean).join(" "),
+      role: p.role ?? "",
+      image: https(p.image),
+    })),
+  };
 }
 
-export async function getWorldsData(): Promise<WorldsData> {
+export async function getWorldsData(t: TournamentConfig = TOURNAMENT): Promise<WorldsData> {
   try {
-    const matches = await fetchSchedule();
+    const matches = await fetchSchedule(t);
     if (matches.length === 0) throw new Error("El calendario llegó vacío");
     const teams = buildTeams(matches);
 
@@ -122,8 +145,8 @@ export async function getWorldsData(): Promise<WorldsData> {
       return [];
     };
     const [liveStreams, details] = await Promise.all([
-      fetchLiveStreams().catch(warn("directo")),
-      fetchTeamSlugs()
+      fetchLiveStreams(t).catch(warn("directo")),
+      fetchTeamSlugs(t)
         .then((slugs) => {
           if (!slugs.length) warnings.push("standings: sin equipos todavía");
           return Promise.allSettled(slugs.map(fetchTeamDetails));
@@ -136,7 +159,7 @@ export async function getWorldsData(): Promise<WorldsData> {
         continue;
       }
       if (!d.value) continue;
-      let team = teams.find((t) => t.code === d.value!.code);
+      let team = teams.find((x) => x.code === d.value!.code);
       if (!team) {
         // Equipos clasificados que aún no aparecen en el calendario.
         team = { code: d.value.code, name: d.value.name, image: d.value.image, region: null, wins: 0, losses: 0, gameWins: 0, gameLosses: 0, form: [], players: [] };
@@ -147,7 +170,7 @@ export async function getWorldsData(): Promise<WorldsData> {
     }
 
     return {
-      tournament: { name: TOURNAMENT.name, tagline: TOURNAMENT.tagline },
+      tournament: { name: t.name, tagline: t.tagline },
       updatedAt: new Date().toISOString(),
       source: "lolesports",
       teams,
