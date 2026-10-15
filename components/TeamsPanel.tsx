@@ -5,18 +5,22 @@ import { HpBar, ROLE_ORDER, RoleBadge, StatBars } from "@/components/Pixel";
 import { TeamLogo } from "@/components/TeamLogo";
 import type { Match, Team, WorldsData } from "@/lib/types";
 
-type SortKey = "record" | "games" | "name";
+type SortKey = "record" | "games" | "name" | "gpr";
 
 function winrate(t: Team) {
   const total = t.wins + t.losses;
   return total ? t.wins / total : 0;
 }
 
+// Sin ranking, al final. También desempata el resto de órdenes.
+const gprRank = (t: Team) => t.gpr?.rank ?? Infinity;
+
 function sortTeams(teams: Team[], key: SortKey) {
   return [...teams].sort((a, b) => {
     if (key === "name") return a.code.localeCompare(b.code);
-    if (key === "games") return b.gameWins - b.gameLosses - (a.gameWins - a.gameLosses) || b.gameWins - a.gameWins;
-    return b.wins - a.wins || a.losses - b.losses || b.gameWins - b.gameLosses - (a.gameWins - a.gameLosses);
+    if (key === "gpr") return gprRank(a) - gprRank(b) || a.code.localeCompare(b.code);
+    if (key === "games") return b.gameWins - b.gameLosses - (a.gameWins - a.gameLosses) || b.gameWins - a.gameWins || gprRank(a) - gprRank(b);
+    return b.wins - a.wins || a.losses - b.losses || b.gameWins - b.gameLosses - (a.gameWins - a.gameLosses) || gprRank(a) - gprRank(b);
   });
 }
 
@@ -48,9 +52,14 @@ function TeamDex({ team, matches }: { team: Team; matches: Match[] }) {
       <div className="bold" style={{ fontSize: 24 }}>
         {team.name}
       </div>
-      {team.region ? (
-        <div style={{ marginTop: 6 }}>
-          <span className="badge region">{team.region}</span>
+      {team.region || team.gpr ? (
+        <div className="badges" style={{ marginTop: 6 }}>
+          {team.region ? <span className="badge region">{team.region}</span> : null}
+          {team.gpr ? (
+            <span className="badge gpr" title={`Ranking global de Riot: ${team.gpr.score} puntos`}>
+              #{team.gpr.rank} mundial
+            </span>
+          ) : null}
         </div>
       ) : null}
       <StatBars
@@ -124,7 +133,7 @@ function StandingsTab({ data }: { data: WorldsData }) {
       <table className="team-table">
         <thead>
           <tr>
-            <th>#</th>
+            <th title="Ranking global de Riot">{sortBtn("gpr", "#")}</th>
             <th>{sortBtn("name", "Equipo")}</th>
             <th>{sortBtn("record", "V-D")}</th>
             <th>{sortBtn("games", "Forma")}</th>
@@ -134,7 +143,7 @@ function StandingsTab({ data }: { data: WorldsData }) {
           {teams.map((t, i) => (
             <Fragment key={t.code}>
               <tr className="row" aria-expanded={open === t.code} onClick={() => setOpen(open === t.code ? null : t.code)}>
-                <td className="rank">{i + 1}</td>
+                <td className="rank">{sort === "gpr" ? (t.gpr?.rank ?? "–") : i + 1}</td>
                 <td>
                   <div className="team-cell">
                     <TeamLogo code={t.code} image={t.image} />

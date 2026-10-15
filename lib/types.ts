@@ -24,6 +24,14 @@ export type Player = {
   image: string;
 };
 
+/** Puesto en el ranking global de Riot (Global Power Rankings). */
+export type Gpr = {
+  rank: number;
+  score: number;
+  /** Fecha del cálculo (ISO) */
+  date: string;
+};
+
 export type Team = {
   code: string;
   name: string;
@@ -36,6 +44,7 @@ export type Team = {
   /** Resultados de series, del más antiguo al más reciente */
   form: ("W" | "L")[];
   players: Player[];
+  gpr?: Gpr | null;
 };
 
 export type LiveStream = {

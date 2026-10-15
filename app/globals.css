@@ -256,6 +256,16 @@ button {
 .badge.region {
   background: #7058a8;
 }
+.badge.gpr {
+  color: var(--ink);
+  background: var(--title);
+}
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px;
+}
 .badge.pwr {
   color: var(--ink-2);
   background: var(--card-2);

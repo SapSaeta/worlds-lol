@@ -5,7 +5,7 @@
 
 import { TOURNAMENT, type TournamentConfig } from "@/config/tournament";
 import { championIcon, getChampions, type Champion } from "@/lib/ddragon";
-import { api, fetchSchedule, fetchTeamDetails, fetchTeamSlugs, type Json, type TeamDetails } from "@/lib/lolesports";
+import { api, fetchSchedule, fetchTeamDetails, fetchTeamSlugs, withActiveRoster, type Json, type TeamDetails } from "@/lib/lolesports";
 
 const FEED = "https://feed.lolesports.com/livestats/v1";
 
@@ -284,8 +284,10 @@ async function buildStats(t: TournamentConfig): Promise<StatsData> {
   const players = new Map<string, PlayerStat & { _champs: Map<string, { games: number; wins: number }> }>();
   const teamGames = new Map<string, { games: number; wins: number }>();
 
-  // Plantillas primero, para que salgan también los jugadores que aún no han jugado.
-  for (const team of ongoing ? teams.values() : []) {
+  // Plantillas primero, para que salgan también los jugadores que aún no han jugado
+  // (sin la academia que lolesports mezcla en algunos equipos).
+  const active = ongoing ? await mapLimit([...teams.values()], 6, (team) => withActiveRoster(team, t)) : [];
+  for (const team of active.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []))) {
     for (const p of team.players) {
       players.set(p.id, {
         ...p,

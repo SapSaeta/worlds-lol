@@ -107,68 +107,102 @@ function EmptyGames({ stats, tournaments }: { stats: StatsData; tournaments: Tou
 
 /* ---------- Equipos ---------- */
 
+type TeamSort = "ranking" | "region";
+
+const shortDate = new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short", timeZone: "UTC" });
+const byRegion = (a: Team, b: Team) => (a.region ?? "").localeCompare(b.region ?? "") || a.code.localeCompare(b.code);
+const byRanking = (a: Team, b: Team) => (a.gpr?.rank ?? Infinity) - (b.gpr?.rank ?? Infinity) || byRegion(a, b);
+
 function TeamsTab({ stats, teams, ongoing }: { stats: StatsData; teams: Team[]; ongoing: boolean }) {
+  const ranked = teams.filter((t) => t.gpr);
+  const [sort, setSort] = useState<TeamSort>(ranked.length ? "ranking" : "region");
   const byCode = new Map(stats.teams.map((t) => [t.code, t]));
   const rosters = new Map<string, PlayerStat[]>();
   for (const p of stats.players) {
     if (!ongoing && p.games === 0) continue;
     rosters.set(p.teamCode, [...(rosters.get(p.teamCode) ?? []), p]);
   }
-  const list = [...teams].sort((a, b) => (a.region ?? "").localeCompare(b.region ?? "") || a.code.localeCompare(b.code));
+  const list = [...teams].sort(sort === "ranking" ? byRanking : byRegion);
   const maxGames = Math.max(1, ...list.map((t) => t.gameWins + t.gameLosses));
+  const gprDate = ranked.map((t) => t.gpr!.date).sort().pop();
 
   if (!list.length) return <div className="card dialog note">Aún no hay equipos confirmados para este torneo.</div>;
 
   return (
-    <div className="grid-cards">
-      {list.map((t, i) => {
-        const series = t.wins + t.losses;
-        const wr = series ? t.wins / series : 0;
-        const games = byCode.get(t.code);
-        const roster = (rosters.get(t.code) ?? []).sort((a, b) => ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role) || b.games - a.games);
-        return (
-          <article key={t.code} className="card starter">
-            <div className="px-small muted dex-no">Nº {num(i + 1)}</div>
-            <div className="sprite">
-              <TeamLogo code={t.code} image={t.image} size={64} />
-            </div>
-            <div className="name bold">{t.name}</div>
-            <div className="lv">{t.code}</div>
-            {t.region ? <span className="badge region">{t.region}</span> : <span className="badge">Worlds</span>}
-            <StatBars
-              stats={[
-                { k: "Vic", v: t.wins, max: Math.max(series, 1) },
-                { k: "Der", v: t.losses, max: Math.max(series, 1) },
-                { k: "Part", v: t.gameWins + t.gameLosses, max: maxGames },
-                { k: "Win%", v: wr * 100, max: 100, text: `${Math.round(wr * 100)}%`, gold: true },
-              ]}
-            />
-            <HpBar value={series ? wr : 1} label={series ? `${t.wins}/${series} series` : "Sin jugar"} />
-            <div className="move inset">
-              <div className="move-title bold">Plantilla</div>
-              {roster.length ? (
-                <ul className="mini-roster">
-                  {roster.map((p) => (
-                    <li key={p.id}>
-                      <RoleBadge role={p.role} />
-                      <span className="bold">{p.name}</span>
-                      {p.games ? <span className="muted px-small">{p.games}P</span> : null}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <div className="px-small muted">Próximamente</div>
-              )}
-              {games?.games ? (
-                <div className="px-small muted move-foot">
-                  Partidas {games.wins}-{games.games - games.wins}
-                </div>
-              ) : null}
-            </div>
-          </article>
-        );
-      })}
-    </div>
+    <>
+      {ranked.length ? (
+        <div className="dex-filters card">
+          <div className="filter-row">
+            <span className="px-small muted sort-label">Ordenar</span>
+            <button type="button" className="chip" aria-pressed={sort === "ranking"} onClick={() => setSort("ranking")}>
+              Ranking global
+            </button>
+            <button type="button" className="chip" aria-pressed={sort === "region"} onClick={() => setSort("region")}>
+              Región
+            </button>
+          </div>
+          <p className="px-small muted dex-hint">
+            Ranking global de Riot (Global Power Rankings){gprDate ? `, actualizado el ${shortDate.format(new Date(gprDate))}` : ""}.
+          </p>
+        </div>
+      ) : null}
+      <div className="grid-cards">
+        {list.map((t, i) => {
+          const series = t.wins + t.losses;
+          const wr = series ? t.wins / series : 0;
+          const games = byCode.get(t.code);
+          const roster = (rosters.get(t.code) ?? []).sort((a, b) => ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role) || b.games - a.games);
+          return (
+            <article key={t.code} className="card starter">
+              <div className="px-small muted dex-no">Nº {num(i + 1)}</div>
+              <div className="sprite">
+                <TeamLogo code={t.code} image={t.image} size={64} />
+              </div>
+              <div className="name bold">{t.name}</div>
+              <div className="lv">{t.code}</div>
+              <div className="badges">
+                {t.region ? <span className="badge region">{t.region}</span> : <span className="badge">Worlds</span>}
+                {t.gpr ? (
+                  <span className="badge gpr" title={`Ranking global de Riot: ${t.gpr.score} puntos`}>
+                    #{t.gpr.rank} mundial
+                  </span>
+                ) : null}
+              </div>
+              <StatBars
+                stats={[
+                  { k: "Vic", v: t.wins, max: Math.max(series, 1) },
+                  { k: "Der", v: t.losses, max: Math.max(series, 1) },
+                  { k: "Part", v: t.gameWins + t.gameLosses, max: maxGames },
+                  { k: "Win%", v: wr * 100, max: 100, text: `${Math.round(wr * 100)}%`, gold: true },
+                ]}
+              />
+              <HpBar value={series ? wr : 1} label={series ? `${t.wins}/${series} series` : "Sin jugar"} />
+              <div className="move inset">
+                <div className="move-title bold">Plantilla</div>
+                {roster.length ? (
+                  <ul className="mini-roster">
+                    {roster.map((p) => (
+                      <li key={p.id}>
+                        <RoleBadge role={p.role} />
+                        <span className="bold">{p.name}</span>
+                        {p.games ? <span className="muted px-small">{p.games}P</span> : null}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="px-small muted">Próximamente</div>
+                )}
+                {games?.games ? (
+                  <div className="px-small muted move-foot">
+                    Partidas {games.wins}-{games.games - games.wins}
+                  </div>
+                ) : null}
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </>
   );
 }
 
