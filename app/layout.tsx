@@ -3,6 +3,8 @@ import "@fontsource/press-start-2p/400.css";
 import "@fontsource/vt323/400.css";
 import "./globals.css";
 import { SiteHeader } from "@/components/SiteHeader";
+import { PlayerDock } from "@/components/player/PlayerDock";
+import { PlayerProvider } from "@/components/player/PlayerProvider";
 import { TOURNAMENT } from "@/config/tournament";
 
 export const metadata: Metadata = {
@@ -19,8 +21,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="es">
       <body>
-        <SiteHeader />
-        <main>{children}</main>
+        <PlayerProvider>
+          <SiteHeader />
+          <main>{children}</main>
+          <PlayerDock />
+        </PlayerProvider>
         <footer className="site-footer">
           <p>
             worlddex.lol se ha creado bajo la política «Legal Jibber Jabber» de Riot Games usando recursos propiedad de Riot Games. Riot Games no respalda ni
