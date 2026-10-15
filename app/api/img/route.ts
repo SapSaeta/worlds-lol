@@ -1,7 +1,7 @@
-// Proxy de imágenes de Data Dragon y lolesports para poder dibujarlas en un
+// Proxy de imágenes de Data Dragon, lolesports y CommunityDragon para poder dibujarlas en un
 // canvas (la tarjeta del juego) sin que el navegador lo bloquee por CORS.
 
-const ALLOWED = ["ddragon.leagueoflegends.com", "static.lolesports.com"];
+const ALLOWED = ["ddragon.leagueoflegends.com", "static.lolesports.com", "raw.communitydragon.org"];
 
 export async function GET(req: Request) {
   const raw = new URL(req.url).searchParams.get("u") ?? "";
