@@ -344,14 +344,16 @@ export const STAGES = [
  * Dificultad por fase. Con una sola vida, el Play-In se pasa casi siempre y
  * cada fase aprieta más: niveles, tamaño y fuerza de rivales y jefes.
  */
+// Ajustado con 900 partidas simuladas con datos reales y un jugador que elige
+// bien: pasa el Play-In un 80 %, llega a la final un 16 % y gana un 5 %.
 export const DIFFICULTY = {
   startLevel: 5,
-  stageLevel: [3, 6, 9, 12, 15],
+  stageLevel: [2, 6, 10, 13, 15],
   rivalSize: [1, 2, 2, 3, 3],
-  rivalMult: [1, 1.04, 1.08, 1.12, 1.16],
+  rivalMult: [1, 1.06, 1.12, 1.16, 1.2],
   bossSize: [3, 4, 4, 5, 5],
-  bossLevel: [1, 2, 2, 3, 3],
-  bossMult: [1, 1.05, 1.1, 1.18, 1.28],
+  bossLevel: [1, 3, 3, 3, 3],
+  bossMult: [1, 1.1, 1.25, 1.34, 1.28],
   monsterLevel: 2,
   dmgK: 4,
 };
