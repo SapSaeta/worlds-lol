@@ -3455,3 +3455,220 @@ button {
 .g-shared-body .g-share-main {
   max-width: 520px;
 }
+
+/* ---------- Aviso del próximo partido (sobre el reproductor) ---------- */
+
+.player-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.next-popup-wrap {
+  position: absolute;
+  inset: 0;
+  /* Por encima del reproductor del layout (z-index 5) y por debajo de la cabecera */
+  z-index: 6;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(8, 20, 41, 0.55);
+  pointer-events: none;
+}
+
+.next-popup {
+  position: relative;
+  width: min(520px, 100%);
+  padding: 22px 24px 18px;
+  text-align: center;
+  pointer-events: auto;
+  animation: popup-in 0.25s steps(4) both;
+}
+
+@keyframes popup-in {
+  from {
+    transform: scale(0.85);
+    opacity: 0;
+  }
+}
+
+.next-popup-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+}
+
+.next-popup-kicker {
+  margin: 0 0 8px;
+  color: var(--muted);
+}
+
+.next-popup-title {
+  margin: 0 0 18px;
+  font-family: var(--font-pixel);
+  font-size: 16px;
+  line-height: 1.4;
+  color: var(--title);
+  text-shadow: 3px 3px 0 var(--line);
+}
+
+.next-popup-teams {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 12px;
+}
+
+.next-popup-team {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.next-popup-logo {
+  display: grid;
+  place-items: center;
+  width: 112px;
+  height: 112px;
+  /* Azul medio: se leen tanto los escudos blancos (MVK, TSW) como los negros (FURIA) */
+  background: var(--slate);
+  border: var(--b) solid var(--line);
+  box-shadow: 4px 4px 0 0 var(--shadow);
+}
+
+/* TeamLogo pone el tamaño en línea en el escudo de reserva: aquí manda la caja */
+.next-popup-logo .team-logo {
+  width: 78% !important;
+  height: 78% !important;
+}
+
+.next-popup-logo .team-logo.fallback {
+  font-size: 14px;
+  color: #f9d97c;
+  background: transparent;
+}
+
+.next-popup-code {
+  font-family: var(--font-pixel);
+  font-size: 13px;
+}
+
+.next-popup-name {
+  max-width: 100%;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.next-popup-vs {
+  font-family: var(--font-pixel);
+  font-size: 18px;
+  color: var(--red);
+  text-shadow: 2px 2px 0 var(--line);
+}
+
+.next-popup-when {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 18px 0 10px;
+  padding: 10px 12px;
+  background: var(--slate);
+  border: 2px solid #a08a48;
+}
+
+.next-popup-day {
+  font-size: 24px;
+  line-height: 1;
+  color: #fff;
+}
+
+.next-popup-hour {
+  font-family: var(--font-pixel);
+  font-size: 18px;
+  color: #f9d97c;
+}
+
+.next-popup-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 14px;
+  margin: 0;
+  font-size: 20px;
+  color: var(--ink-2);
+}
+
+.next-popup-count {
+  color: var(--ink);
+  font-weight: bold;
+}
+
+@media (max-width: 1000px) {
+  .player-stage {
+    flex: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .next-popup {
+    padding: 16px 12px 12px;
+  }
+
+  .next-popup-kicker {
+    display: none;
+  }
+
+  .next-popup-title {
+    margin-bottom: 10px;
+    font-size: 11px;
+  }
+
+  .next-popup-logo {
+    width: 48px;
+    height: 48px;
+    box-shadow: 3px 3px 0 0 var(--shadow);
+  }
+
+  .next-popup-logo .team-logo.fallback {
+    font-size: 8px;
+  }
+
+  .next-popup-code,
+  .next-popup-vs {
+    font-size: 10px;
+  }
+
+  .next-popup-name {
+    display: none;
+  }
+
+  .next-popup-when {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: baseline;
+    gap: 2px 10px;
+    margin: 10px 0 6px;
+    padding: 5px 8px;
+  }
+
+  .next-popup-day {
+    font-size: 18px;
+  }
+
+  .next-popup-hour {
+    font-size: 12px;
+  }
+
+  .next-popup-meta {
+    font-size: 16px;
+  }
+}
