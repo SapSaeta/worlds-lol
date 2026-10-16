@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "@fontsource/press-start-2p/400.css";
 import "@fontsource/vt323/400.css";
 import "./globals.css";
+import { AuthorBadge } from "@/components/AuthorBadge";
 import { SiteHeader } from "@/components/SiteHeader";
 import { PlayerDock } from "@/components/player/PlayerDock";
 import { PlayerProvider } from "@/components/player/PlayerProvider";
@@ -27,6 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <PlayerDock />
         </PlayerProvider>
         <footer className="site-footer">
+          <AuthorBadge />
           <p>
             worlddex.lol se ha creado bajo la política «Legal Jibber Jabber» de Riot Games usando recursos propiedad de Riot Games. Riot Games no respalda ni
             patrocina este proyecto.
