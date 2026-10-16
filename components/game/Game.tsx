@@ -4,6 +4,7 @@
 // partida y la pantalla actual) y todas las reglas están en lib/game/engine.
 
 import { useEffect, useState } from "react";
+import { useLocale } from "@/components/LocaleProvider";
 import { PixelImg } from "@/components/PixelImg";
 import { TeamLogo } from "@/components/TeamLogo";
 import { BattleView } from "@/components/game/BattleView";
@@ -37,6 +38,7 @@ import {
   rivalTrainer,
   score,
   seedRandom,
+  setGameLocale,
   shopStock,
   startBattle,
   trainerOptions,
@@ -48,6 +50,7 @@ import {
 } from "@/lib/game/engine";
 import { dailyNumber, dailySeed, freshSeed } from "@/lib/game/daily";
 import type { GameData, GItem, GPlayer } from "@/lib/game/types";
+import { fmtNum } from "@/lib/i18n";
 
 /** Partida con semilla: el reto del día o el reto que te pasa un amigo. */
 type Mode = { seed: number; daily?: number };
@@ -74,9 +77,16 @@ type Screen =
   | { s: "stageClear"; from: number }
   | { s: "end" };
 
-const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+/** Número con separador de miles en el idioma de la página. */
+function useFmt() {
+  const { locale } = useLocale();
+  return (n: number) => fmtNum(locale, n);
+}
 
 export function Game({ data }: { data: GameData }) {
+  const { locale, t } = useLocale();
+  // Los textos del motor salen en el idioma de la página (solo en el navegador).
+  if (typeof window !== "undefined") setGameLocale(locale);
   const [screen, setScreen] = useState<Screen>({ s: "title" });
   const [run, setRun] = useState<Run | null>(null);
   const [mode, setMode] = useState<Mode>({ seed: 0 });
@@ -96,9 +106,9 @@ export function Game({ data }: { data: GameData }) {
   if (data.players.length < 3 || !Object.keys(data.champions).length) {
     return (
       <div className="g-wrap">
-        <h1 className="screen-title">Camino a la Copa</h1>
+        <h1 className="screen-title">{t("Camino a la Copa", "Road to the Cup")}</h1>
         <div className="dialog card" style={{ marginTop: 24 }}>
-          Ahora mismo no se pueden cargar los jugadores del torneo. Vuelve a probar en un rato.
+          {t("Ahora mismo no se pueden cargar los jugadores del torneo. Vuelve a probar en un rato.", "The tournament players can't be loaded right now. Please try again in a while.")}
         </div>
       </div>
     );
@@ -122,8 +132,8 @@ export function Game({ data }: { data: GameData }) {
     if (screen.s === "trainer")
       return (
         <div className="g-wrap">
-          <h1 className="screen-title">Elige a tu entrenador</h1>
-          <p className="screen-subtitle">Cada jugador trae su pool de campeones y una ventaja según su rol</p>
+          <h1 className="screen-title">{t("Elige a tu entrenador", "Choose your trainer")}</h1>
+          <p className="screen-subtitle">{t("Cada jugador trae su pool de campeones y una ventaja según su rol", "Each player brings their champion pool and a perk based on their role")}</p>
           <div className="g-trainers">
             {screen.options.map((p) => (
               <TrainerCard key={p.id} p={p} data={data} onPick={() => go({ s: "starter", trainer: p })} />
@@ -131,26 +141,26 @@ export function Game({ data }: { data: GameData }) {
           </div>
           <div className="g-actions-row">
             <button type="button" className="btn" disabled={!screen.rerolls} onClick={() => go({ s: "trainer", options: trainerOptions(data), rerolls: screen.rerolls - 1 })}>
-              Otros tres ({screen.rerolls})
+              {t("Otros tres", "Three more")} ({screen.rerolls})
             </button>
           </div>
         </div>
       );
     if (screen.s === "starter") {
-      const t = screen.trainer;
+      const tr = screen.trainer;
       return (
         <div className="g-wrap">
-          <h1 className="screen-title">¿Con quién empieza {t.name}?</h1>
-          <p className="screen-subtitle">Tres campeones de su pool. El resto se ficha por el camino</p>
+          <h1 className="screen-title">{t(`¿Con quién empieza ${tr.name}?`, `Who does ${tr.name} start with?`)}</h1>
+          <p className="screen-subtitle">{t("Tres campeones de su pool. El resto se ficha por el camino", "Three champions from their pool. You recruit the rest along the way")}</p>
           <div className="g-starters">
-            {t.pool.slice(0, 3).map((c) => (
+            {tr.pool.slice(0, 3).map((c) => (
               <StarterCard
                 key={c}
                 id={c}
-                trainer={t}
+                trainer={tr}
                 data={data}
                 onPick={() => {
-                  setRun(newRun(t, c, data, mode.seed, mode.daily));
+                  setRun(newRun(tr, c, data, mode.seed, mode.daily));
                   go({ s: "map" });
                 }}
               />
@@ -161,8 +171,8 @@ export function Game({ data }: { data: GameData }) {
     }
     return (
       <div className="g-wrap g-title">
-        <h1 className="screen-title g-big">Camino a la Copa</h1>
-        <p className="screen-subtitle">Un roguelike de los Worlds 2026</p>
+        <h1 className="screen-title g-big">{t("Camino a la Copa", "Road to the Cup")}</h1>
+        <p className="screen-subtitle">{t("Un roguelike de los Worlds 2026", "A Worlds 2026 roguelike")}</p>
         <div className="g-title-art" aria-hidden>
           {data.players
             .filter((p) => p.pool[0])
@@ -172,29 +182,33 @@ export function Game({ data }: { data: GameData }) {
             ))}
         </div>
         <div className="dialog card">
-          Elige a un jugador de los Worlds como entrenador y empieza con un campeón de su pool. Recorre la Grieta desde el
-          Play-In hasta la final de Nueva York: combate, ficha campeones rivales, compra objetos, caza dragones y vence a los
-          equipos jefe. Solo tienes una vida: a la primera derrota, quedas eliminado.
+          {t(
+            "Elige a un jugador de los Worlds como entrenador y empieza con un campeón de su pool. Recorre la Grieta desde el Play-In hasta la final de Nueva York: combate, ficha campeones rivales, compra objetos, caza dragones y vence a los equipos jefe. Solo tienes una vida: a la primera derrota, quedas eliminado.",
+            "Pick a Worlds player as your trainer and start with a champion from their pool. Cross the Rift from the Play-In to the New York final: battle, recruit enemy champions, buy items, hunt dragons and beat the boss teams. You only have one life: lose once and you're out.",
+          )}
           <span className="next">▼</span>
         </div>
         {challenge ? (
           <div className="g-actions-row g-modes">
             <button type="button" className="btn g-start" onClick={() => start(challenge)}>
-              {challenge.daily ? `Jugar el reto #${challenge.daily}` : "Aceptar el reto"}
+              {challenge.daily ? t(`Jugar el reto #${challenge.daily}`, `Play challenge #${challenge.daily}`) : t("Aceptar el reto", "Accept the challenge")}
             </button>
-            <p className="px-small g-mode-note">La misma partida que te han pasado: mismos entrenadores, mismo mapa. ¿Llegas más lejos?</p>
+            <p className="px-small g-mode-note">
+              {t("La misma partida que te han pasado: mismos entrenadores, mismo mapa. ¿Llegas más lejos?", "The same run you were sent: same trainers, same map. Can you go further?")}
+            </p>
             <button type="button" className="btn" onClick={free}>
-              Partida libre
+              {t("Partida libre", "Free play")}
             </button>
           </div>
         ) : (
           <div className="g-actions-row g-modes">
             <button type="button" className="btn g-start" onClick={daily}>
-              Reto del día{today ? ` #${today}` : ""}
+              {t("Reto del día", "Daily challenge")}
+              {today ? ` #${today}` : ""}
             </button>
-            <p className="px-small g-mode-note">La misma partida para todos hoy. Compárate con tus amigos.</p>
+            <p className="px-small g-mode-note">{t("La misma partida para todos hoy. Compárate con tus amigos.", "The same run for everyone today. Compare with your friends.")}</p>
             <button type="button" className="btn" onClick={free}>
-              Partida libre
+              {t("Partida libre", "Free play")}
             </button>
           </div>
         )}
@@ -265,9 +279,9 @@ export function Game({ data }: { data: GameData }) {
         msg={screen.msg}
         onLeave={() => go({ s: "map" })}
         onBuy={(item, u) => {
-          if (run.gold < item.gold) return go({ ...screen, msg: "No te llega el oro." });
+          if (run.gold < item.gold) return go({ ...screen, msg: t("No te llega el oro.", "Not enough gold.") });
           const res = buy(run, item, u.uid, data);
-          if (!res) return go({ ...screen, msg: `${data.champions[u.champ].name} no tiene hueco para eso.` });
+          if (!res) return go({ ...screen, msg: t(`${data.champions[u.champ].name} no tiene hueco para eso.`, `${data.champions[u.champ].name} has no room for that.`) });
           setRun(res.run);
           go({ s: "shop", stock: item.kind === "potion" ? screen.stock : screen.stock.filter((x) => x !== item), msg: res.text });
         }}
@@ -296,13 +310,13 @@ export function Game({ data }: { data: GameData }) {
               >
                 {ev.choice.yes}
               </button>
-              <button type="button" className="btn" onClick={() => go({ s: "event", ev, result: "Lo dejas como está." })}>
+              <button type="button" className="btn" onClick={() => go({ s: "event", ev, result: t("Lo dejas como está.", "You leave things as they are.") })}>
                 {ev.choice.no}
               </button>
             </>
           ) : (
             <button type="button" className="btn" onClick={() => go({ s: "map" })}>
-              Continuar
+              {t("Continuar", "Continue")}
             </button>
           )}
         </div>
@@ -313,12 +327,12 @@ export function Game({ data }: { data: GameData }) {
     body = (
       <div className="g-event card">
         <PixelIcon name="fountain" size={40} />
-        <h2 className="px-title g-event-title">Fuente</h2>
-        <p>Vuelves a la base. La fuente cura del todo a tu equipo.</p>
+        <h2 className="px-title g-event-title">{t("Fuente", "Fountain")}</h2>
+        <p>{t("Vuelves a la base. La fuente cura del todo a tu equipo.", "You recall to base. The fountain fully heals your team.")}</p>
         <TeamBar run={run} data={data} />
         <div className="g-actions-row">
           <button type="button" className="btn" onClick={() => go({ s: "map" })}>
-            Continuar
+            {t("Continuar", "Continue")}
           </button>
         </div>
       </div>
@@ -328,9 +342,10 @@ export function Game({ data }: { data: GameData }) {
     body = (
       <div className="g-event card">
         <PixelIcon name="boss" size={40} />
-        <h2 className="px-title g-event-title">¡{STAGES[screen.from].name} superado!</h2>
+        <h2 className="px-title g-event-title">{t(`¡${STAGES[screen.from].name} superado!`, `${STAGES[screen.from].name} cleared!`)}</h2>
         <p>
-          Siguiente parada: <span className="bold">{now.name}</span> en {now.city}. El equipo descansa y llega con la vida al máximo.
+          {t("Siguiente parada:", "Next stop:")} <span className="bold">{now.name}</span> {t("en", "in")} {now.city}.{" "}
+          {t("El equipo descansa y llega con la vida al máximo.", "The team rests and arrives at full health.")}
         </p>
         <div className="g-stages big" aria-hidden>
           {STAGES.map((s, i) => (
@@ -339,7 +354,7 @@ export function Game({ data }: { data: GameData }) {
         </div>
         <div className="g-actions-row">
           <button type="button" className="btn" onClick={() => go({ s: "map" })}>
-            Continuar
+            {t("Continuar", "Continue")}
           </button>
         </div>
       </div>
@@ -369,6 +384,8 @@ export function Game({ data }: { data: GameData }) {
 /* ---------- Piezas de pantalla ---------- */
 
 function Hud({ run, data }: { run: Run; data: GameData }) {
+  const { t: tt } = useLocale();
+  const fmt = useFmt();
   const t = run.trainer;
   const team = data.teams.find((x) => x.code === t.team);
   return (
@@ -383,19 +400,19 @@ function Hud({ run, data }: { run: Run; data: GameData }) {
         </div>
       </div>
       <div className="g-hud-stats px-small">
-        <span title="Oro" className="g-gold">
-          {fmt(run.gold)} oro
+        <span title={tt("Oro", "Gold")} className="g-gold">
+          {fmt(run.gold)} {tt("oro", "gold")}
         </span>
         {run.drakes.length || run.baron || run.elder ? (
           <span className="g-buffs">
             {run.drakes.map((d, i) => (
               <PixelImg key={i} src={DRAKES[d].icon} alt={DRAKES[d].name} size={22} res={16} />
             ))}
-            {run.baron ? <PixelImg src={MONSTERS.baron.icon} alt="Mano del Barón" size={22} res={16} /> : null}
-            {run.elder ? <PixelImg src={MONSTERS.elder.icon} alt="Ejecución del ancestral" size={22} res={16} /> : null}
+            {run.baron ? <PixelImg src={MONSTERS.baron.icon} alt={MONSTERS.baron.name} size={22} res={16} /> : null}
+            {run.elder ? <PixelImg src={MONSTERS.elder.icon} alt={MONSTERS.elder.name} size={22} res={16} /> : null}
           </span>
         ) : null}
-        <span title="Puntos">{fmt(score(run))} pts</span>
+        <span title={tt("Puntos", "Points")}>{fmt(score(run))} pts</span>
       </div>
     </div>
   );
@@ -422,13 +439,14 @@ function TrainerCard({ p, data, onPick }: { p: GPlayer; data: GameData; onPick: 
 function StarterCard({ id, trainer, data, onPick }: { id: string; trainer: GPlayer; data: GameData; onPick: () => void }) {
   const c = data.champions[id];
   const d = derive(c, DIFFICULTY.startLevel, [], data, { role: trainer.role });
+  const { t } = useLocale();
   return (
     <div className="g-starter card">
       <ChampSprite champ={c} size={88} res={30} />
       <div className="g-starter-name bold">{c.name}</div>
       <div className="px-small muted">{c.title}</div>
       <div className="g-starter-type">
-        <TypeBadge cls={c.cls} /> <span className="px-small muted">{c.magic ? "Mágico" : "Físico"}</span>
+        <TypeBadge cls={c.cls} /> <span className="px-small muted">{c.magic ? t("Mágico", "Magic") : t("Físico", "Physical")}</span>
       </div>
       <Hp hp={d.hp} max={d.hp} />
       <StatLine d={d} magic={c.magic} />
@@ -440,7 +458,7 @@ function StarterCard({ id, trainer, data, onPick }: { id: string; trainer: GPlay
         ))}
       </ul>
       <button type="button" className="btn" onClick={onPick}>
-        ¡Te elijo!
+        {t("¡Te elijo!", "I choose you!")}
       </button>
     </div>
   );
@@ -448,29 +466,37 @@ function StarterCard({ id, trainer, data, onPick }: { id: string; trainer: GPlay
 
 function Reward({ run, data, screen, onDone }: { run: Run; data: GameData; screen: Extract<Screen, { s: "reward" }>; onDone: (r: Run) => void }) {
   const [replacing, setReplacing] = useState<Unit | null>(null);
+  const { t } = useLocale();
+  const fmt = useFmt();
   const { battle, gold, levels, reward } = screen;
   const captures = captureOptions(battle).filter((u) => !run.team.some((m) => m.champ === u.champ));
-  const title = battle.kind === "boss" ? `¡Has eliminado a ${battle.foe.name}!` : battle.kind === "objective" ? `¡${battle.foe.name} es tuyo!` : "¡Victoria!";
+  const title =
+    battle.kind === "boss"
+      ? t(`¡Has eliminado a ${battle.foe.name}!`, `You knocked out ${battle.foe.name}!`)
+      : battle.kind === "objective"
+        ? t(`¡${battle.foe.name} es tuyo!`, `${battle.foe.name} is yours!`)
+        : t("¡Victoria!", "Victory!");
   return (
     <div className="g-event card">
       <h2 className="px-title g-event-title">{title}</h2>
       <p>
-        {gold ? `+${fmt(gold)} de oro · ` : ""}+{levels} {levels === 1 ? "nivel" : "niveles"} para todo el equipo
+        {gold ? t(`+${fmt(gold)} de oro · `, `+${fmt(gold)} gold · `) : ""}
+        {t(`+${levels} ${levels === 1 ? "nivel" : "niveles"} para todo el equipo`, `+${levels} ${levels === 1 ? "level" : "levels"} for the whole team`)}
       </p>
       {reward ? <p className="bold">{reward}</p> : null}
       {replacing ? (
         <>
-          <p className="px-small g-switch-title">¿Quién deja su sitio a {data.champions[replacing.champ].name}?</p>
-          <TeamBar run={run} data={data} pickLabel="Sustituir" onPick={(u) => onDone(addUnit(run, replacing, data, u.uid))} />
+          <p className="px-small g-switch-title">{t(`¿Quién deja su sitio a ${data.champions[replacing.champ].name}?`, `Who makes way for ${data.champions[replacing.champ].name}?`)}</p>
+          <TeamBar run={run} data={data} pickLabel={t("Sustituir", "Replace")} onPick={(u) => onDone(addUnit(run, replacing, data, u.uid))} />
           <div className="g-actions-row">
             <button type="button" className="btn sm" onClick={() => setReplacing(null)}>
-              Volver
+              {t("Volver", "Back")}
             </button>
           </div>
         </>
       ) : captures.length ? (
         <>
-          <p className="px-small g-switch-title">Ficha a un campeón de {battle.foe.name}</p>
+          <p className="px-small g-switch-title">{t(`Ficha a un campeón de ${battle.foe.name}`, `Recruit a champion from ${battle.foe.name}`)}</p>
           <div className="g-captures">
             {captures.map((u) => {
               const c = data.champions[u.champ];
@@ -479,18 +505,20 @@ function Reward({ run, data, screen, onDone }: { run: Run; data: GameData; scree
                   <ChampSprite champ={c} size={56} />
                   <span className="bold">{c.name}</span>
                   <TypeBadge cls={c.cls} />
-                  <span className="g-lv">Nv {u.level}</span>
+                  <span className="g-lv">
+                    {t("Nv", "Lv")} {u.level}
+                  </span>
                 </button>
               );
             })}
           </div>
-          {run.team.length >= MAX_TEAM ? <p className="px-small muted">Tu equipo está lleno: si fichas, eliges a quién sustituye.</p> : null}
+          {run.team.length >= MAX_TEAM ? <p className="px-small muted">{t("Tu equipo está lleno: si fichas, eliges a quién sustituye.", "Your team is full: if you recruit, you pick who it replaces.")}</p> : null}
         </>
       ) : null}
       {!replacing ? (
         <div className="g-actions-row">
           <button type="button" className="btn" onClick={() => onDone(run)}>
-            {captures.length ? "No fichar a nadie" : "Continuar"}
+            {captures.length ? t("No fichar a nadie", "Don't recruit anyone") : t("Continuar", "Continue")}
           </button>
         </div>
       ) : null}
@@ -504,28 +532,30 @@ function End({ run, data, onAgain }: { run: Run; data: GameData; onAgain: () => 
   const [format, setFormat] = useState<CardFormat>("square");
   const [cards, setCards] = useState<Partial<Record<CardFormat, Card>>>({});
   const [note, setNote] = useState("");
+  const { t, locale } = useLocale();
+  const fmt = useFmt();
   // Enlace propio del resultado: X, WhatsApp o Telegram enseñan su tarjeta en el post.
-  const [url, setUrl] = useState(() => resultUrl(run, "https://worlddex.lol"));
-  const text = shareText(run);
+  const [url, setUrl] = useState(() => resultUrl(run, "https://worlddex.lol", locale));
+  const text = shareText(run, locale);
   const card = cards[format];
 
   // Se dibujan las dos tarjetas: la cuadrada para posts y la vertical para historias.
   useEffect(() => {
     let alive = true;
-    setUrl(resultUrl(run, location.origin));
+    setUrl(resultUrl(run, location.origin, locale));
     (async () => {
       for (const f of ["square", "story"] as CardFormat[]) {
-        const canvas = await drawCard(run, data, f);
+        const canvas = await drawCard(run, data, f, locale);
         const blob = await toBlob(canvas).catch(() => null);
         if (alive) setCards((c) => ({ ...c, [f]: { url: canvas.toDataURL("image/png"), blob } }));
       }
-    })().catch(() => alive && setNote("No se ha podido generar la imagen."));
+    })().catch(() => alive && setNote(t("No se ha podido generar la imagen.", "Couldn't generate the image.")));
     return () => {
       alive = false;
     };
-  }, [run, data]);
+  }, [run, data, locale, t]);
 
-  const fileName = (f: CardFormat) => `camino-a-la-copa${f === "story" ? "-historia" : ""}.png`;
+  const fileName = (f: CardFormat) => (locale === "en" ? `road-to-the-cup${f === "story" ? "-story" : ""}.png` : `camino-a-la-copa${f === "story" ? "-historia" : ""}.png`);
   const fileOf = (f: CardFormat) => {
     const b = cards[f]?.blob;
     return b ? new File([b], fileName(f), { type: "image/png" }) : null;
@@ -546,7 +576,7 @@ function End({ run, data, onAgain }: { run: Run; data: GameData; onAgain: () => 
       await navigator.clipboard.writeText(`${text}\n${url}`);
       setNote(msg);
     } catch {
-      setNote("No se ha podido copiar el mensaje.");
+      setNote(t("No se ha podido copiar el mensaje.", "Couldn't copy the message."));
     }
   };
   const download = (f: CardFormat) => {
@@ -569,22 +599,22 @@ function End({ run, data, onAgain }: { run: Run; data: GameData; onAgain: () => 
       return;
     }
     download(format);
-    await copy("Imagen descargada y mensaje copiado: pégalo donde quieras junto a la imagen.");
+    await copy(t("Imagen descargada y mensaje copiado: pégalo donde quieras junto a la imagen.", "Image downloaded and message copied: paste it anywhere along with the image."));
   };
   const shareStory = async (app: string) => {
     setFormat("story");
     if (await shareFile("story")) return;
     download("story");
-    await copy(`Imagen de historia descargada y mensaje copiado: súbela a ${app} desde la app.`);
+    await copy(t(`Imagen de historia descargada y mensaje copiado: súbela a ${app} desde la app.`, `Story image downloaded and message copied: upload it to ${app} from the app.`));
   };
 
   const champion = run.over === "champion";
   return (
     <div className="g-end">
       <div className={`g-end-hero${champion ? " gold" : ""}`}>
-        <h1 className={`screen-title g-big${champion ? " gold" : ""}`}>{resultLine(run)}</h1>
-        <p className="g-end-sub">{resultSub(run)}</p>
-        <ol className="g-track" aria-label="Hasta dónde llegaste">
+        <h1 className={`screen-title g-big${champion ? " gold" : ""}`}>{resultLine(run, locale)}</h1>
+        <p className="g-end-sub">{resultSub(run, locale)}</p>
+        <ol className="g-track" aria-label={t("Hasta dónde llegaste", "How far you got")}>
           {stageStates(run).map((s, i) => (
             <li key={STAGES[i].name} className={s}>
               <span aria-hidden>{s === "won" ? "✓" : s === "lost" ? "✗" : "·"}</span>
@@ -600,29 +630,33 @@ function End({ run, data, onAgain }: { run: Run; data: GameData; onAgain: () => 
               Post
             </button>
             <button type="button" className="btn sm" aria-pressed={format === "story"} onClick={() => setFormat("story")}>
-              Historia
+              {t("Historia", "Story")}
             </button>
           </div>
           <div className={`g-card-preview card ${format}`}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            {card ? <img src={card.url} alt="Tu tarjeta de Camino a la Copa" /> : <span className="px-small muted">{note || "Dibujando tu tarjeta…"}</span>}
+            {card ? (
+              <img src={card.url} alt={t("Tu tarjeta de Camino a la Copa", "Your Road to the Cup card")} />
+            ) : (
+              <span className="px-small muted">{note || t("Dibujando tu tarjeta…", "Drawing your card…")}</span>
+            )}
           </div>
           <button type="button" className="btn" onClick={() => download(format)} disabled={!card}>
-            Descargar imagen
+            {t("Descargar imagen", "Download image")}
           </button>
         </div>
         <div className="g-end-side g-share-box">
           <button type="button" className="btn g-share-main" onClick={shareMain} disabled={!card}>
-            ¡Presume de resultado!
+            {t("¡Presume de resultado!", "Show off your result!")}
           </button>
           <div className="g-share">
-            <a className="btn s-x" href={xIntent(run, url)} target="_blank" rel="noopener noreferrer">
+            <a className="btn s-x" href={xIntent(run, url, locale)} target="_blank" rel="noopener noreferrer">
               X (Twitter)
             </a>
-            <a className="btn s-wa" href={whatsappLink(run, url)} target="_blank" rel="noopener noreferrer">
+            <a className="btn s-wa" href={whatsappLink(run, url, locale)} target="_blank" rel="noopener noreferrer">
               WhatsApp
             </a>
-            <a className="btn s-tg" href={telegramLink(run, url)} target="_blank" rel="noopener noreferrer">
+            <a className="btn s-tg" href={telegramLink(run, url, locale)} target="_blank" rel="noopener noreferrer">
               Telegram
             </a>
             <button type="button" className="btn s-ig" onClick={() => shareStory("Instagram")} disabled={!cards.story}>
@@ -631,38 +665,48 @@ function End({ run, data, onAgain }: { run: Run; data: GameData; onAgain: () => 
             <button type="button" className="btn s-tt" onClick={() => shareStory("TikTok")} disabled={!cards.story}>
               TikTok
             </button>
-            <button type="button" className="btn" onClick={() => copy("¡Mensaje copiado! Pégalo donde quieras.")}>
-              Copiar mensaje
+            <button type="button" className="btn" onClick={() => copy(t("¡Mensaje copiado! Pégalo donde quieras.", "Message copied! Paste it anywhere."))}>
+              {t("Copiar mensaje", "Copy message")}
             </button>
           </div>
           {note && card ? <p className="px-small g-note">{note}</p> : null}
         </div>
         <div className="g-end-side g-end-info">
           <div className="g-msg card">
-            <div className="px-small muted">Tu mensaje</div>
+            <div className="px-small muted">{t("Tu mensaje", "Your message")}</div>
             <p>{text}</p>
           </div>
           <div className="g-score card">
-            <div className="px-small muted">Puntos</div>
+            <div className="px-small muted">{t("Puntos", "Points")}</div>
             <div className="g-score-num">{fmt(score(run))}</div>
             <ul className="px-small">
               <li>
-                Combates ganados: {run.wins} × 100
+                {t("Combates ganados", "Battles won")}: {run.wins} × 100
               </li>
               <li>
-                Objetivos: {run.objectives} × 300
+                {t("Objetivos", "Objectives")}: {run.objectives} × 300
               </li>
               <li>
-                Jefes: {run.bosses} × 1.000
+                {t("Jefes", "Bosses")}: {run.bosses} × {fmt(1000)}
               </li>
-              <li>Oro sobrante: {fmt(Math.floor(run.gold / 10))}</li>
-              {champion ? <li>Campeón del mundo: 5.000</li> : null}
+              <li>
+                {t("Oro sobrante", "Leftover gold")}: {fmt(Math.floor(run.gold / 10))}
+              </li>
+              {champion ? (
+                <li>
+                  {t("Campeón del mundo", "World champion")}: {fmt(5000)}
+                </li>
+              ) : null}
             </ul>
           </div>
-          {run.daily ? <p className="px-small g-mode-note">Mañana hay reto nuevo. Pásale el enlace a un amigo: jugará tu misma partida.</p> : null}
+          {run.daily ? (
+            <p className="px-small g-mode-note">
+              {t("Mañana hay reto nuevo. Pásale el enlace a un amigo: jugará tu misma partida.", "New challenge tomorrow. Send the link to a friend: they'll play your same run.")}
+            </p>
+          ) : null}
           <div className="g-actions-row">
             <button type="button" className="btn" onClick={onAgain}>
-              Jugar otra vez
+              {t("Jugar otra vez", "Play again")}
             </button>
           </div>
         </div>

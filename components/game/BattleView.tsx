@@ -1,35 +1,39 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useLocale } from "@/components/LocaleProvider";
 import { ChampSprite, Hp, PixelIcon, Portrait, TypeBadge } from "@/components/game/parts";
 import { CLS_LABEL, estimate, moveNote, movesOf, type Action, type BEvent, type Battle, type Fighter } from "@/lib/game/engine";
 
 /** Lo que tarda cada paso del turno, para que se vean los golpes. */
 const STEP_MS: Record<BEvent["kind"], number> = { intro: 700, move: 520, hit: 720, miss: 620, heal: 620, shield: 560, status: 620, ko: 820, switch: 620, end: 500 };
 
-const STATUS_LABEL: [keyof Fighter["st"], string][] = [
-  ["stun", "Aturdido"],
-  ["slow", "Ralentizado"],
-  ["haste", "Rápido"],
-  ["buff", "Potenciado"],
-  ["guard", "Protegido"],
-  ["evade", "Esquiva"],
+const STATUS_LABEL: [keyof Fighter["st"], string, string][] = [
+  ["stun", "Aturdido", "Stunned"],
+  ["slow", "Ralentizado", "Slowed"],
+  ["haste", "Rápido", "Fast"],
+  ["buff", "Potenciado", "Empowered"],
+  ["guard", "Protegido", "Guarded"],
+  ["evade", "Esquiva", "Evasive"],
 ];
 
 function Info({ f, hp, shield, mine, showStatus }: { f: Fighter; hp: number; shield: number; mine?: boolean; showStatus: boolean }) {
   const monster = f.champ.tags.includes("Monster");
+  const { t } = useLocale();
   return (
     <div className={`g-info card${mine ? " mine" : ""}`}>
       <div className="g-info-name">
         <span className="bold">{f.champ.name}</span>
-        <span className="g-lv">Nv {f.unit.level}</span>
+        <span className="g-lv">
+          {t("Nv", "Lv")} {f.unit.level}
+        </span>
       </div>
       <div className="g-info-tags">
         <TypeBadge cls={monster ? "Monster" : f.champ.cls} />
         {showStatus
-          ? STATUS_LABEL.filter(([k]) => f.st[k] > 0).map(([k, label]) => (
+          ? STATUS_LABEL.filter(([k]) => f.st[k] > 0).map(([k, es, en]) => (
               <span key={k} className={`g-status s-${k}`}>
-                {label}
+                {t(es, en)}
               </span>
             ))
           : null}
@@ -51,15 +55,17 @@ function Balls({ fs, active }: { fs: Fighter[]; active: number }) {
 
 /** Número que sale flotando sobre el campeón: daño, cura o esquiva. */
 function Float({ ev }: { ev: BEvent }) {
+  const { t } = useLocale();
   if (ev.kind === "hit" && ev.amount) return <span className={`g-float dmg${ev.crit ? " crit" : ""}`}>-{ev.amount}</span>;
   if (ev.kind === "heal" && ev.amount) return <span className="g-float heal">+{ev.amount}</span>;
-  if (ev.kind === "miss") return <span className="g-float miss">¡Esquiva!</span>;
-  if (ev.kind === "status" && /aturdido!/.test(ev.text)) return <span className="g-float stun">¡Aturdido!</span>;
+  if (ev.kind === "miss") return <span className="g-float miss">{t("¡Esquiva!", "Dodged!")}</span>;
+  if (ev.kind === "status" && /aturdido!|is stunned!/.test(ev.text)) return <span className="g-float stun">{t("¡Aturdido!", "Stunned!")}</span>;
   return null;
 }
 
 /** Pantalla de combate por turnos, al estilo de los juegos de Pokémon. */
 export function BattleView({ battle, onAction, onDone }: { battle: Battle; onAction: (a: Action) => void; onDone: () => void }) {
+  const { t } = useLocale();
   const [shown, setShown] = useState(battle.log.length);
   const [switching, setSwitching] = useState(false);
   const busy = shown < battle.log.length;
@@ -144,7 +150,7 @@ export function BattleView({ battle, onAction, onDone }: { battle: Battle; onAct
   return (
     <div className={`g-battle card${battle.kind === "boss" ? " boss" : ""}`}>
       <div className="g-foe-tag px-small">
-        {battle.kind === "boss" ? "JEFE · " : ""}
+        {battle.kind === "boss" ? t("JEFE · ", "BOSS · ") : ""}
         {battle.foe.name}
         {battle.foe.team && battle.kind !== "boss" ? ` (${battle.foe.team})` : ""}
         <Balls fs={battle.theirs} active={battle.b} />
@@ -184,25 +190,28 @@ export function BattleView({ battle, onAction, onDone }: { battle: Battle; onAct
       {battle.result ? (
         <div className="g-actions-row">
           <button type="button" className="btn" onClick={onDone} disabled={busy}>
-            Continuar
+            {t("Continuar", "Continue")}
           </button>
         </div>
       ) : listOpen ? (
         <div className="g-switch">
-          <div className="px-small g-switch-title">{battle.mustSwitch ? "¿A quién sacas?" : "Cambiar de campeón"}</div>
+          <div className="px-small g-switch-title">{battle.mustSwitch ? t("¿A quién sacas?", "Who do you send out?") : t("Cambiar de campeón", "Switch champion")}</div>
           {battle.mine.map((f, i) => (
             <button key={f.unit.uid} type="button" className="g-switch-btn card" disabled={busy || f.hp <= 0 || i === battle.a} onClick={() => onAction({ type: "switch", to: i })}>
               <ChampSprite champ={f.champ} size={32} />
               <span className="g-switch-name">
                 <span className="g-key kbd-only">{i + 1}</span>{" "}
-                {f.champ.name} <span className="g-lv">Nv {f.unit.level}</span>
+                {f.champ.name}{" "}
+                <span className="g-lv">
+                  {t("Nv", "Lv")} {f.unit.level}
+                </span>
               </span>
               <Hp hp={f.hp} max={f.max.hp} />
             </button>
           ))}
           {!battle.mustSwitch ? (
             <button type="button" className="btn sm" onClick={() => setSwitching(false)}>
-              Volver
+              {t("Volver", "Back")}
             </button>
           ) : null}
         </div>
@@ -229,16 +238,15 @@ export function BattleView({ battle, onAction, onDone }: { battle: Battle; onAct
                   <span className="px-small muted g-move-note">{moveNote(m)}</span>
                   <span className="px-small g-move-dmg">
                     {cd ? (
-                      <span className="muted">
-                        Lista en {cd} {cd === 1 ? "turno" : "turnos"}
-                      </span>
+                      <span className="muted">{t(`Lista en ${cd} ${cd === 1 ? "turno" : "turnos"}`, `Ready in ${cd} ${cd === 1 ? "turn" : "turns"}`)}</span>
                     ) : dmg ? (
                       <>
-                        ≈ {dmg} de daño{kills ? <b className="eff up"> · Lo remata</b> : null}
-                        {tm > 1 ? <b className="eff up"> · Eficaz</b> : tm < 1 ? <b className="eff down"> · Poco eficaz</b> : null}
+                        ≈ {t(`${dmg} de daño`, `${dmg} damage`)}
+                        {kills ? <b className="eff up"> · {t("Lo remata", "Finishes it")}</b> : null}
+                        {tm > 1 ? <b className="eff up"> · {t("Eficaz", "Effective")}</b> : tm < 1 ? <b className="eff down"> · {t("Poco eficaz", "Not effective")}</b> : null}
                       </>
                     ) : (
-                      <span className="muted">Sin daño</span>
+                      <span className="muted">{t("Sin daño", "No damage")}</span>
                     )}
                   </span>
                 </span>
@@ -246,14 +254,16 @@ export function BattleView({ battle, onAction, onDone }: { battle: Battle; onAct
             );
           })}
           <button type="button" className="btn sm g-switch-open" disabled={busy || !canSwitch} onClick={() => setSwitching(true)}>
-            Cambiar <span className="kbd-only muted">(C)</span>
+            {t("Cambiar", "Switch")} <span className="kbd-only muted">(C)</span>
           </button>
           {foeCls ? (
             <span className="px-small muted g-matchup">
-              {CLS_LABEL[me.champ.cls]} contra {CLS_LABEL[foeCls]}
+              {CLS_LABEL[me.champ.cls]} {t("contra", "vs")} {CLS_LABEL[foeCls]}
             </span>
           ) : null}
-          <span className="px-small muted g-keys-hint kbd-only">Teclado: Q W E R habilidades · A ataque básico · C cambiar · Espacio pasa el texto</span>
+          <span className="px-small muted g-keys-hint kbd-only">
+            {t("Teclado: Q W E R habilidades · A ataque básico · C cambiar · Espacio pasa el texto", "Keys: Q W E R abilities · A basic attack · C switch · Space skips text")}
+          </span>
         </div>
       )}
     </div>

@@ -2,25 +2,31 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { useLocale } from "@/components/LocaleProvider";
 import { TeamLogo } from "@/components/TeamLogo";
 import type { StageInfo } from "@/config/tournament";
 import { byTime, isTbd, stageLayout, stageState, type Slot, type StageState, type SwissRecord } from "@/lib/bracket";
 import type { Match, Team, TournamentMap as MapData } from "@/lib/types";
 
-const STATE_LABEL: Record<StageState, string> = { done: "Terminada", live: "En juego", next: "Próximamente" };
-const DRAW_OF: Record<string, string> = { play_ins: "del Play-In", swiss: "de la fase suiza", knockouts: "de las eliminatorias" };
+const STATE_LABEL: Record<StageState, [string, string]> = { done: ["Terminada", "Finished"], live: ["En juego", "Live"], next: ["Próximamente", "Upcoming"] };
+const DRAW_OF: Record<string, [string, string]> = {
+  play_ins: ["del Play-In", "the Play-In"],
+  swiss: ["de la fase suiza", "the Swiss stage"],
+  knockouts: ["de las eliminatorias", "the knockouts"],
+};
 
 /** Formatos de fecha en la zona horaria de quien mira (Madrid hasta que carga el navegador). */
 function useDates() {
+  const { intl } = useLocale();
   const [tz, setTz] = useState("Europe/Madrid");
   useEffect(() => {
     const local = Intl.DateTimeFormat().resolvedOptions().timeZone;
     if (local) setTz(local);
   }, []);
   return useMemo(() => {
-    const day = new Intl.DateTimeFormat("es-ES", { weekday: "short", day: "numeric", month: "short", timeZone: tz });
-    const hour = new Intl.DateTimeFormat("es-ES", { hour: "2-digit", minute: "2-digit", timeZone: tz });
-    const span = new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short", timeZone: tz });
+    const day = new Intl.DateTimeFormat(intl, { weekday: "short", day: "numeric", month: "short", timeZone: tz });
+    const hour = new Intl.DateTimeFormat(intl, { hour: "2-digit", minute: "2-digit", timeZone: tz });
+    const span = new Intl.DateTimeFormat(intl, { day: "numeric", month: "short", timeZone: tz });
     return {
       tz,
       when: (iso: string, withHour = true) => (iso ? `${day.format(new Date(iso)).replace(",", "")}${withHour ? ` · ${hour.format(new Date(iso))}` : ""}` : ""),
@@ -30,20 +36,21 @@ function useDates() {
         return span.formatRange(Math.min(...times), Math.max(...times));
       },
     };
-  }, [tz]);
+  }, [tz, intl]);
 }
 
 type Dates = ReturnType<typeof useDates>;
 
 export function TournamentMap({ map, info, teams }: { map: MapData; info: StageInfo[]; teams: Team[] }) {
   const dates = useDates();
+  const { t, locale } = useLocale();
   const stages = useMemo(
     () =>
       map.stages.map((st) => {
         const meta = info.find((i) => i.slug === st.slug);
-        return { ...st, name: meta?.name ?? st.name, meta, state: stageState(st.matches), layout: stageLayout(st.slug, st.matches) };
+        return { ...st, name: meta?.name ?? st.name, meta, state: stageState(st.matches), layout: stageLayout(st.slug, st.matches, locale) };
       }),
-    [map.stages, info],
+    [map.stages, info, locale],
   );
   // La fase "de hoy": la primera que no ha terminado.
   const current = Math.max(0, stages.findIndex((s) => s.state !== "done"));
@@ -60,7 +67,12 @@ export function TournamentMap({ map, info, teams }: { map: MapData; info: StageI
   }, [teams, map.stages]);
 
   if (!stages.length) {
-    return <div className="card dialog note">No he podido cargar el cuadro del torneo ahora mismo{map.error ? ` (${map.error})` : ""}. Vuelve a intentarlo en un rato.</div>;
+    const err = map.error ? ` (${map.error})` : "";
+    return (
+      <div className="card dialog note">
+        {t(`No he podido cargar el cuadro del torneo ahora mismo${err}. Vuelve a intentarlo en un rato.`, `Couldn't load the tournament bracket right now${err}. Please try again in a while.`)}
+      </div>
+    );
   }
 
   const stage = stages[Math.min(sel, stages.length - 1)];
@@ -69,20 +81,20 @@ export function TournamentMap({ map, info, teams }: { map: MapData; info: StageI
 
   return (
     <div className="tmap">
-      <ol className="tm-route card" aria-label="Fases del torneo">
+      <ol className="tm-route card" aria-label={t("Fases del torneo", "Tournament stages")}>
         {stages.map((s, i) => {
           const plays = team ? s.matches.some((m) => m.teams.some((t) => t.code === team)) : false;
           return (
             <li key={s.slug}>
               <button type="button" className={`tm-town ${s.state}`} aria-pressed={i === sel} onClick={() => setSel(i)}>
-                {i === current && !allDone ? <span className="tm-here">Hoy</span> : null}
+                {i === current && !allDone ? <span className="tm-here">{t("Hoy", "Now")}</span> : null}
                 <span className="tm-house" aria-hidden>
                   {plays && chosen ? <TeamLogo code={chosen.code} image={chosen.image} size={22} /> : <i />}
                 </span>
                 <span className="tm-town-name">{s.name}</span>
                 <span className="tm-town-city">{s.meta?.city ?? ""}</span>
                 <span className="tm-town-dates">{dates.range(s.matches)}</span>
-                <span className={`badge tm-state ${s.state}`}>{STATE_LABEL[s.state]}</span>
+                <span className={`badge tm-state ${s.state}`}>{t(...STATE_LABEL[s.state])}</span>
               </button>
             </li>
           );
@@ -98,14 +110,14 @@ export function TournamentMap({ map, info, teams }: { map: MapData; info: StageI
 
       <div className="dex-filters card tm-teams">
         <div className="filter-row">
-          <span className="px-small muted sort-label">Sigue a</span>
+          <span className="px-small muted sort-label">{t("Sigue a", "Follow")}</span>
           <button type="button" className="chip" aria-pressed={!team} onClick={() => setTeam(null)}>
-            Todos
+            {t("Todos", "All")}
           </button>
-          {pickable.map((t) => (
-            <button key={t.code} type="button" className="chip tm-chip" aria-pressed={team === t.code} title={t.name} onClick={() => toggle(t.code)}>
-              {t.image ? <TeamLogo code={t.code} image={t.image} size={16} /> : null}
-              {t.code}
+          {pickable.map((p) => (
+            <button key={p.code} type="button" className="chip tm-chip" aria-pressed={team === p.code} title={p.name} onClick={() => toggle(p.code)}>
+              {p.image ? <TeamLogo code={p.code} image={p.image} size={16} /> : null}
+              {p.code}
             </button>
           ))}
         </div>
@@ -134,20 +146,26 @@ export function TournamentMap({ map, info, teams }: { map: MapData; info: StageI
         ))}
         {stage.layout.kind === "swiss" ? (
           <section className="tm-col tm-out">
-            <h3 className="tm-col-title">Balance final</h3>
+            <h3 className="tm-col-title">{t("Balance final", "Final records")}</h3>
             <div className="tm-col-body">
-              <RecordList title="A eliminatorias" list={stage.layout.qualified ?? []} total={8} cls="up" team={team} onTeam={toggle} />
-              <RecordList title="Eliminados" list={stage.layout.eliminated ?? []} total={8} cls="down" team={team} onTeam={toggle} />
+              <RecordList title={t("A eliminatorias", "To knockouts")} list={stage.layout.qualified ?? []} total={8} cls="up" team={team} onTeam={toggle} />
+              <RecordList title={t("Eliminados", "Eliminated")} list={stage.layout.eliminated ?? []} total={8} cls="down" team={team} onTeam={toggle} />
             </div>
           </section>
         ) : null}
       </div>
-      <p className="px-small muted tm-tz">Horas en tu zona horaria ({dates.tz.replace(/_/g, " ")}). Toca un equipo para seguir su camino.</p>
+      <p className="px-small muted tm-tz">
+        {t(
+          `Horas en tu zona horaria (${dates.tz.replace(/_/g, " ")}). Toca un equipo para seguir su camino.`,
+          `Times in your time zone (${dates.tz.replace(/_/g, " ")}). Tap a team to follow its path.`,
+        )}
+      </p>
     </div>
   );
 }
 
 function MatchCard({ slot, team, dates, onTeam }: { slot: Slot; team: string | null; dates: Dates; onTeam: (code: string) => void }) {
+  const { t, href } = useLocale();
   const m = slot.match;
   const live = m.state === "inProgress";
   const done = m.state === "completed";
@@ -156,30 +174,36 @@ function MatchCard({ slot, team, dates, onTeam }: { slot: Slot; team: string | n
   return (
     <article className={cls}>
       <div className="tm-match-head">
-        <span>{live ? `Ahora${m.bestOf ? ` · Bo${m.bestOf}` : ""}` : slot.approx ? "Cruce por sortear" : dates.when(m.startTime) || "Fecha por fijar"}</span>
-        {live ? <span className="badge live">Directo</span> : m.bestOf ? <span className="tm-bo">Bo{m.bestOf}</span> : null}
+        <span>
+          {live
+            ? `${t("Ahora", "Now")}${m.bestOf ? ` · Bo${m.bestOf}` : ""}`
+            : slot.approx
+              ? t("Cruce por sortear", "Matchup to be drawn")
+              : dates.when(m.startTime) || t("Fecha por fijar", "Date TBD")}
+        </span>
+        {live ? <span className="badge live">{t("Directo", "Live")}</span> : m.bestOf ? <span className="tm-bo">Bo{m.bestOf}</span> : null}
       </div>
-      {m.teams.map((t, i) => {
-        const tbd = isTbd(t);
-        const win = done && (t.outcome === "win" || (t.outcome == null && t.gameWins > m.teams[1 - i].gameWins));
+      {m.teams.map((tm, i) => {
+        const tbd = isTbd(tm);
+        const win = done && (tm.outcome === "win" || (tm.outcome == null && tm.gameWins > m.teams[1 - i].gameWins));
         return (
           <button
             key={i}
             type="button"
-            className={`tm-row${win ? " win" : ""}${done && !win ? " loss" : ""}${t.code === team ? " me" : ""}`}
+            className={`tm-row${win ? " win" : ""}${done && !win ? " loss" : ""}${tm.code === team ? " me" : ""}`}
             disabled={tbd}
-            title={tbd ? undefined : t.name}
-            onClick={() => onTeam(t.code)}
+            title={tbd ? undefined : tm.name}
+            onClick={() => onTeam(tm.code)}
           >
-            {tbd ? <span className="team-logo fallback tm-q">?</span> : <TeamLogo code={t.code} image={t.image} size={20} />}
-            <span className="tm-code">{tbd ? (slot.hints?.[i] ?? "Por decidir") : t.code}</span>
-            <span className="tm-score">{done || live ? t.gameWins : ""}</span>
+            {tbd ? <span className="team-logo fallback tm-q">?</span> : <TeamLogo code={tm.code} image={tm.image} size={20} />}
+            <span className="tm-code">{tbd ? (slot.hints?.[i] ?? t("Por decidir", "TBD")) : tm.code}</span>
+            <span className="tm-score">{done || live ? tm.gameWins : ""}</span>
           </button>
         );
       })}
       {live ? (
-        <Link href="/" className="tm-watch px-small">
-          Ver en directo ▸
+        <Link href={href("/")} className="tm-watch px-small">
+          {t("Ver en directo ▸", "Watch live ▸")}
         </Link>
       ) : null}
     </article>
@@ -187,6 +211,7 @@ function MatchCard({ slot, team, dates, onTeam }: { slot: Slot; team: string | n
 }
 
 function RecordList({ title, list, total, cls, team, onTeam }: { title: string; list: SwissRecord[]; total: number; cls: string; team: string | null; onTeam: (code: string) => void }) {
+  const { t } = useLocale();
   return (
     <div className={`tm-group tm-records ${cls}`}>
       <div className="tm-group-title">{title}</div>
@@ -202,7 +227,7 @@ function RecordList({ title, list, total, cls, team, onTeam }: { title: string; 
       {Array.from({ length: Math.max(0, total - list.length) }, (_, i) => (
         <div key={i} className="tm-row empty">
           <span className="team-logo fallback tm-q">?</span>
-          <span className="tm-code">Plaza libre</span>
+          <span className="tm-code">{t("Plaza libre", "Open spot")}</span>
         </div>
       ))}
     </div>
@@ -215,9 +240,11 @@ function TeamPath({ code, name, stages, dates, onStage }: { code: string; name: 
   const path = stages.flatMap((s, i) => s.matches.filter((m) => m.teams.some((t) => t.code === code)).map((m) => ({ m, stage: s.name, i }))).sort((a, b) => byTime(a.m, b.m));
   // Un equipo sin partidos entra en la primera fase cuyo primer cruce aún está por sortear.
   const waiting = stages.find((s) => [...s.matches].sort(byTime)[0]?.teams.some(isTbd));
+  const { t } = useLocale();
+  const draw = waiting && DRAW_OF[waiting.slug];
   return (
     <div className="tm-path">
-      <div className="px-small bold">Camino de {name}</div>
+      <div className="px-small bold">{t(`Camino de ${name}`, `${name}'s path`)}</div>
       {path.length ? (
         <ol>
           {path.map(({ m, stage, i }) => {
@@ -231,17 +258,22 @@ function TeamPath({ code, name, stages, dates, onStage }: { code: string; name: 
                   <span className="muted">{stage}</span>
                   <span>{dates.when(m.startTime, !done)}</span>
                   <span className="tm-vs">
-                    vs {isTbd(rival) ? "por decidir" : rival.code}
+                    vs {isTbd(rival) ? t("por decidir", "TBD") : rival.code}
                     {done ? ` · ${me.gameWins}-${rival.gameWins}` : ""}
                   </span>
-                  {done ? <span className={`badge ${won ? "tm-w" : "tm-l"}`}>{won ? "Victoria" : "Derrota"}</span> : m.state === "inProgress" ? <span className="badge live">Directo</span> : null}
+                  {done ? <span className={`badge ${won ? "tm-w" : "tm-l"}`}>{won ? t("Victoria", "Win") : t("Derrota", "Loss")}</span> : m.state === "inProgress" ? <span className="badge live">{t("Directo", "Live")}</span> : null}
                 </button>
               </li>
             );
           })}
         </ol>
       ) : (
-        <p className="px-small muted">Aún sin rival asignado{waiting && DRAW_OF[waiting.slug] ? `: su primer cruce sale del sorteo ${DRAW_OF[waiting.slug]}` : ""}.</p>
+        <p className="px-small muted">
+          {t(
+            `Aún sin rival asignado${draw ? `: su primer cruce sale del sorteo ${draw[0]}` : ""}.`,
+            `No opponent assigned yet${draw ? `: their first matchup comes from the ${draw[1]} draw` : ""}.`,
+          )}
+        </p>
       )}
     </div>
   );

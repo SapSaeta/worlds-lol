@@ -4,6 +4,7 @@
 // deduce del orden por fecha y, cuando ya hay equipos, de quién ganó a quién.
 // Sin dependencias de servidor: se usa desde el navegador.
 
+import { tr, type Locale } from "@/lib/i18n";
 import type { Match, MatchTeam } from "@/lib/types";
 
 export type Slot = {
@@ -49,10 +50,11 @@ const list = (ms: Match[], title: string): StageLayout => ({ kind: "list", colum
 
 /* ---------- Play-In ---------- */
 
-export function playInLayout(matches: Match[]): StageLayout {
+export function playInLayout(matches: Match[], l: Locale = "es"): StageLayout {
+  const T = (es: string, en: string) => tr(l, es, en);
   const ms = [...matches].sort(byTime);
-  if (ms.length === 1) return list(ms, "Final del Play-In");
-  if (ms.length !== 6) return list(ms, "Partidos");
+  if (ms.length === 1) return list(ms, T("Final del Play-In", "Play-In final"));
+  if (ms.length !== 6) return list(ms, T("Partidos", "Matches"));
 
   // Doble eliminación de 4: dos semis arriba, luego final superior y semi
   // inferior (mismo día), final inferior y gran final.
@@ -68,19 +70,22 @@ export function playInLayout(matches: Match[]): StageLayout {
   return {
     kind: "double",
     columns: [
-      { title: "Ronda 1", groups: [{ title: "Semis del cuadro superior", slots: [{ match: a }, { match: b }] }] },
+      { title: T("Ronda 1", "Round 1"), groups: [{ title: T("Semis del cuadro superior", "Upper bracket semis"), slots: [{ match: a }, { match: b }] }] },
       {
-        title: "Ronda 2",
+        title: T("Ronda 2", "Round 2"),
         groups: [
-          { title: "Final superior", slots: [{ match: upperFinal, hints: [`Gana ${pa}`, `Gana ${pb}`] }] },
-          { title: "Semi inferior", slots: [{ match: lowerSemi, hints: [`Pierde ${pa}`, `Pierde ${pb}`] }] },
+          { title: T("Final superior", "Upper final"), slots: [{ match: upperFinal, hints: [T(`Gana ${pa}`, `Winner ${pa}`), T(`Gana ${pb}`, `Winner ${pb}`)] }] },
+          { title: T("Semi inferior", "Lower semi"), slots: [{ match: lowerSemi, hints: [T(`Pierde ${pa}`, `Loser ${pa}`), T(`Pierde ${pb}`, `Loser ${pb}`)] }] },
         ],
       },
-      { title: "Ronda 3", groups: [{ title: "Final inferior", slots: [{ match: lowerFinal, hints: ["Pierde final sup.", "Gana semi inf."] }] }] },
       {
-        title: "Gran final",
-        groups: [{ slots: [{ match: grandFinal, hints: ["Gana final sup.", "Gana final inf."] }] }],
-        note: "El campeón pasa a la fase suiza",
+        title: T("Ronda 3", "Round 3"),
+        groups: [{ title: T("Final inferior", "Lower final"), slots: [{ match: lowerFinal, hints: [T("Pierde final sup.", "Loser upper final"), T("Gana semi inf.", "Winner lower semi")] }] }],
+      },
+      {
+        title: T("Gran final", "Grand final"),
+        groups: [{ slots: [{ match: grandFinal, hints: [T("Gana final sup.", "Winner upper final"), T("Gana final inf.", "Winner lower final")] }] }],
+        note: T("El campeón pasa a la fase suiza", "The winner advances to the Swiss stage"),
       },
     ],
   };
@@ -93,11 +98,17 @@ export function playInLayout(matches: Match[]): StageLayout {
 const ROUND_SIZES = [8, 8, 8, 6, 3];
 const POOLS = [["0-0"], ["1-0", "0-1"], ["2-0", "1-1", "0-2"], ["2-1", "1-2"], ["2-2"]];
 const POOL_SIZE: Record<string, number> = { "0-0": 8, "1-0": 4, "0-1": 4, "2-0": 2, "1-1": 4, "0-2": 2, "2-1": 3, "1-2": 3, "2-2": 3 };
-const POOL_NOTE: Record<string, string> = { "2-0": "a por la plaza", "0-2": "a vida o muerte", "2-1": "a por la plaza", "1-2": "a vida o muerte", "2-2": "todo o nada" };
+const POOL_NOTE: Record<string, [string, string]> = {
+  "2-0": ["a por la plaza", "for a spot"],
+  "0-2": ["a vida o muerte", "do or die"],
+  "2-1": ["a por la plaza", "for a spot"],
+  "1-2": ["a vida o muerte", "do or die"],
+  "2-2": ["todo o nada", "all or nothing"],
+};
 
-export function swissLayout(matches: Match[]): StageLayout {
+export function swissLayout(matches: Match[], l: Locale = "es"): StageLayout {
   const ms = [...matches].sort(byTime);
-  if (ms.length !== ROUND_SIZES.reduce((s, n) => s + n, 0)) return list(ms, "Partidos");
+  if (ms.length !== ROUND_SIZES.reduce((s, n) => s + n, 0)) return list(ms, tr(l, "Partidos", "Matches"));
 
   const rec = new Map<string, SwissRecord>();
   const recordOf = (t: MatchTeam) => rec.get(t.code) ?? rec.set(t.code, { team: t, w: 0, l: 0 }).get(t.code)!;
@@ -131,8 +142,8 @@ export function swissLayout(matches: Match[]): StageLayout {
       recordOf(res.loss).l++;
     }
     return {
-      title: `Ronda ${r + 1}`,
-      groups: [...pools].map(([k, slots]) => ({ title: POOL_NOTE[k] ? `${k} · ${POOL_NOTE[k]}` : k, slots })),
+      title: tr(l, `Ronda ${r + 1}`, `Round ${r + 1}`),
+      groups: [...pools].map(([k, slots]) => ({ title: POOL_NOTE[k] ? `${k} · ${tr(l, ...POOL_NOTE[k])}` : k, slots })),
     };
   });
 
@@ -147,9 +158,10 @@ export function swissLayout(matches: Match[]): StageLayout {
 
 /* ---------- Eliminatorias ---------- */
 
-export function knockoutLayout(matches: Match[]): StageLayout {
+export function knockoutLayout(matches: Match[], l: Locale = "es"): StageLayout {
+  const T = (es: string, en: string) => tr(l, es, en);
   const ms = [...matches].sort(byTime);
-  if (ms.length !== 7) return list(ms, "Partidos");
+  if (ms.length !== 7) return list(ms, T("Partidos", "Matches"));
   let qf = ms.slice(0, 4);
   const sf = ms.slice(4, 6);
   const final = ms[6];
@@ -159,26 +171,27 @@ export function knockoutLayout(matches: Match[]): StageLayout {
   const feeds = sf.flatMap((s) => qf.filter((q) => has(s, winnerOf(q)?.code)));
   if (new Set(feeds).size === 4) qf = feeds;
 
-  const q = qf.map((m, k) => pair(m, `cuartos ${k + 1}`));
+  const q = qf.map((m, k) => pair(m, T(`cuartos ${k + 1}`, `QF ${k + 1}`)));
   const s = sf.map((m, k) => pair(m, `semi ${k + 1}`));
+  const tbd = T("Por sortear", "To be drawn");
   return {
     kind: "bracket",
     columns: [
-      { title: "Cuartos de final", groups: [{ slots: qf.map((match) => ({ match, hints: ["Por sortear", "Por sortear"] as [string, string] })) }] },
+      { title: T("Cuartos de final", "Quarterfinals"), groups: [{ slots: qf.map((match) => ({ match, hints: [tbd, tbd] as [string, string] })) }] },
       {
-        title: "Semifinales",
-        groups: [{ slots: sf.map((match, k) => ({ match, hints: [`Gana ${q[k * 2]}`, `Gana ${q[k * 2 + 1]}`] as [string, string] })) }],
+        title: T("Semifinales", "Semifinals"),
+        groups: [{ slots: sf.map((match, k) => ({ match, hints: [T(`Gana ${q[k * 2]}`, `Winner ${q[k * 2]}`), T(`Gana ${q[k * 2 + 1]}`, `Winner ${q[k * 2 + 1]}`)] as [string, string] })) }],
       },
-      { title: "Final", groups: [{ slots: [{ match: final, hints: [`Gana ${s[0]}`, `Gana ${s[1]}`] }] }] },
+      { title: "Final", groups: [{ slots: [{ match: final, hints: [T(`Gana ${s[0]}`, `Winner ${s[0]}`), T(`Gana ${s[1]}`, `Winner ${s[1]}`)] }] }] },
     ],
   };
 }
 
-export function stageLayout(slug: string, matches: Match[]): StageLayout {
-  if (slug === "play_ins") return playInLayout(matches);
-  if (slug === "swiss") return swissLayout(matches);
-  if (slug === "knockouts") return knockoutLayout(matches);
-  return list([...matches].sort(byTime), "Partidos");
+export function stageLayout(slug: string, matches: Match[], l: Locale = "es"): StageLayout {
+  if (slug === "play_ins") return playInLayout(matches, l);
+  if (slug === "swiss") return swissLayout(matches, l);
+  if (slug === "knockouts") return knockoutLayout(matches, l);
+  return list([...matches].sort(byTime), tr(l, "Partidos", "Matches"));
 }
 
 export type StageState = "done" | "live" | "next";

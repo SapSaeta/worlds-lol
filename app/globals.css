@@ -424,6 +424,21 @@ button {
   gap: 10px;
 }
 
+/* Selector de idioma: dos botones pegados */
+.lang-switch {
+  display: flex;
+  gap: 6px;
+}
+
+.lang-switch .btn {
+  padding: 7px 8px;
+}
+
+.lang-switch .btn[aria-pressed="true"] {
+  color: var(--sky);
+  background: var(--koi);
+}
+
 /* Recuadro pizarra tipo contador de dinero */
 .status-chip {
   display: inline-flex;
@@ -1759,6 +1774,10 @@ button {
 
   .header-spacer {
     display: none;
+  }
+
+  .lang-switch {
+    margin-left: auto;
   }
 
   .nav {

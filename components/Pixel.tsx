@@ -1,4 +1,9 @@
+"use client";
+
 // Piezas visuales reutilizables al estilo pokelike.
+
+import { useLocale } from "@/components/LocaleProvider";
+import type { Locale } from "@/lib/i18n";
 
 export function HpBar({ value, label }: { value: number; label?: string }) {
   const v = Math.max(0, Math.min(1, value));
@@ -39,8 +44,14 @@ export const ROLE_LABEL: Record<string, string> = {
   support: "Supp",
 };
 
+const ROLE_LABEL_EN: Record<string, string> = { ...ROLE_LABEL, jungle: "Jungle" };
+
+export const roleLabel = (role: string, l: Locale) => (l === "en" ? ROLE_LABEL_EN : ROLE_LABEL)[role];
+
 export const ROLE_ORDER = ["top", "jungle", "mid", "bottom", "support"];
 
 export function RoleBadge({ role }: { role: string }) {
-  return <span className={`role ${ROLE_LABEL[role] ? role : "none"}`}>{ROLE_LABEL[role] ?? (role || "—")}</span>;
+  const { locale } = useLocale();
+  const label = roleLabel(role, locale);
+  return <span className={`role ${label ? role : "none"}`}>{label ?? (role || "—")}</span>;
 }

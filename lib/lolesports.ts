@@ -89,7 +89,7 @@ async function fetchLiveStreams(t: TournamentConfig): Promise<LiveStream[]> {
   return events
     .filter((e) => e.league?.id === t.leagueId || /world/i.test(e.league?.slug ?? ""))
     .flatMap((e) => (e.streams ?? []) as Json[])
-    .filter((s) => typeof s.locale === "string" && s.locale.startsWith("es"))
+    .filter((s) => typeof s.locale === "string" && /^(es|en)/.test(s.locale))
     .map((s) => ({ provider: s.provider, channel: s.parameter, locale: s.locale }));
 }
 
