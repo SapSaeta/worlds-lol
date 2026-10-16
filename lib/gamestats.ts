@@ -4,7 +4,8 @@
 // las nuevas cuestan llamadas.
 
 import { TOURNAMENT, type TournamentConfig } from "@/config/tournament";
-import { championIcon, getChampions, type Champion } from "@/lib/ddragon";
+import { DD_LANG, championIcon, getChampions, type Champion } from "@/lib/ddragon";
+import type { Locale } from "@/lib/i18n";
 import { api, fetchSchedule, fetchTeamDetails, fetchTeamSlugs, withActiveRoster, type Json, type TeamDetails } from "@/lib/lolesports";
 
 const FEED = "https://feed.lolesports.com/livestats/v1";
@@ -238,6 +239,19 @@ function checkWinners(records: GameRecord[], wins: Map<string, number>) {
     const wrong = records.find((r) => r.winnerTeamId === null || (extra.length === 1 && r.winnerTeamId === extra[0][0] && r.uncertain));
     if (wrong) wrong.winnerTeamId = missing[0][0];
   }
+}
+
+/** Nombres y títulos de campeón en inglés (el resto de datos no depende del idioma). */
+export async function localizeStats(stats: StatsData, locale: Locale): Promise<StatsData> {
+  if (locale === "es" || !stats.version) return stats;
+  const en = await getChampions(stats.version, DD_LANG.en).catch(() => null);
+  if (!en) return stats;
+  const name = (id: string) => en.champions[id]?.name ?? id;
+  return {
+    ...stats,
+    champions: stats.champions.map((c) => ({ ...c, name: en.champions[c.id]?.name ?? c.name, title: en.champions[c.id]?.title ?? c.title })),
+    players: stats.players.map((p) => ({ ...p, champions: p.champions.map((c) => ({ ...c, name: name(c.id) })) })),
+  };
 }
 
 export async function getStats(t: TournamentConfig = TOURNAMENT): Promise<StatsData> {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useLocale } from "@/components/LocaleProvider";
 import { ChampSprite, Hp, ItemIcon, StatLine, TypeBadge, statsText } from "@/components/game/parts";
 import { MAX_ITEMS, moveNote, movesOf, unitStats, type Run, type Unit } from "@/lib/game/engine";
 import type { GameData } from "@/lib/game/types";
@@ -22,6 +23,7 @@ export function TeamBar({
   hint?: (u: Unit) => string;
 }) {
   const [open, setOpen] = useState<string | null>(null);
+  const { t } = useLocale();
   const shown = run.team.find((u) => u.uid === open);
   return (
     <div className="g-team">
@@ -37,11 +39,13 @@ export function TeamBar({
               className={`g-unit card${u.hp <= 0 ? " ko" : ""}${open === u.uid ? " open" : ""}`}
               disabled={off}
               onClick={() => (onPick ? onPick(u) : setOpen(open === u.uid ? null : u.uid))}
-              title={onPick ? pickLabel : "Ver ficha"}
+              title={onPick ? pickLabel : t("Ver ficha", "View details")}
             >
               <ChampSprite champ={c} size={40} />
               <span className="g-unit-name">{c.name}</span>
-              <span className="g-lv">Nv {u.level}</span>
+              <span className="g-lv">
+                {t("Nv", "Lv")} {u.level}
+              </span>
               <Hp hp={u.hp} max={d.hp} showNumbers={false} />
               <span className="g-unit-items">
                 {Array.from({ length: MAX_ITEMS }, (_, i) => {
@@ -62,16 +66,20 @@ export function TeamBar({
 export function UnitSheet({ unit, run, data }: { unit: Unit; run: Run; data: GameData }) {
   const c = data.champions[unit.champ];
   const d = unitStats(unit, data, run.trainer.role);
+  const { t } = useLocale();
   return (
     <div className="g-sheet card">
       <div className="g-sheet-head">
         <ChampSprite champ={c} size={56} />
         <div>
           <div className="bold g-sheet-name">
-            {c.name} <span className="g-lv">Nv {unit.level}</span>
+            {c.name}{" "}
+            <span className="g-lv">
+              {t("Nv", "Lv")} {unit.level}
+            </span>
           </div>
           <div className="px-small muted">{c.title}</div>
-          <TypeBadge cls={c.cls} /> <span className="px-small muted">{c.magic ? "Daño mágico" : "Daño físico"}</span>
+          <TypeBadge cls={c.cls} /> <span className="px-small muted">{c.magic ? t("Daño mágico", "Magic damage") : t("Daño físico", "Physical damage")}</span>
         </div>
       </div>
       <Hp hp={unit.hp} max={d.hp} />
@@ -89,7 +97,7 @@ export function UnitSheet({ unit, run, data }: { unit: Unit; run: Run; data: Gam
             const it = data.items.find((x) => x.id === id);
             return it ? (
               <div key={i} className="px-small">
-                <ItemIcon item={it} size={20} /> {it.name} <span className="muted">{statsText(it.stats)}</span>
+                <ItemIcon item={it} size={20} /> {it.name} <span className="muted">{statsText(it.stats, t)}</span>
               </div>
             ) : null;
           })}

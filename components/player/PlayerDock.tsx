@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useLayoutEffect, useState } from "react";
 import type { Stream } from "@/config/streams";
+import { useLocale } from "@/components/LocaleProvider";
 import { usePlayer } from "@/components/player/PlayerProvider";
 
 function embedUrl(s: Stream, host: string) {
@@ -43,6 +44,7 @@ function useSlotBox(slot: HTMLElement | null) {
  */
 export function PlayerDock() {
   const { current, liveChannels, slot, active, start, close, frameRef, isFullscreen, toggleFullscreen } = usePlayer();
+  const { t, href } = useLocale();
   const [host, setHost] = useState<string | null>(null);
   const box = useSlotBox(slot);
 
@@ -71,18 +73,18 @@ export function PlayerDock() {
       }
     >
       <div className="label px-small">
-        {live ? <span className="live-dot" aria-label="En directo" /> : null}
+        {live ? <span className="live-dot" aria-label={t("En directo", "Live")} /> : null}
         <span className="dock-title">
-          {current.kind === "oficial" ? "Emisión oficial" : "Cooficial"} · {current.label}
+          {current.kind === "oficial" ? t("Emisión oficial", "Official broadcast") : t("Cooficial", "Co-stream")} · {current.label}
         </span>
         <span className="dock-actions">
-          <button className="dock-btn" onClick={toggleFullscreen} aria-label={isFullscreen ? "Salir de pantalla completa" : "Pantalla completa"} title="Pantalla completa">
+          <button className="dock-btn" onClick={toggleFullscreen} aria-label={isFullscreen ? t("Salir de pantalla completa", "Exit fullscreen") : t("Pantalla completa", "Fullscreen")} title={t("Pantalla completa", "Fullscreen")}>
             ⛶
           </button>
-          <Link href="/" className="dock-btn" aria-label="Ver en grande" title="Ver en grande">
+          <Link href={href("/")} className="dock-btn" aria-label={t("Ver en grande", "Watch full size")} title={t("Ver en grande", "Watch full size")}>
             ⤢
           </Link>
-          <button className="dock-btn" onClick={close} aria-label="Cerrar emisión" title="Cerrar">
+          <button className="dock-btn" onClick={close} aria-label={t("Cerrar emisión", "Close stream")} title={t("Cerrar", "Close")}>
             ✕
           </button>
         </span>
@@ -92,12 +94,12 @@ export function PlayerDock() {
           <iframe
             key={current.id}
             src={embedUrl(current, host)}
-            title={`Emisión de ${current.label}`}
+            title={t(`Emisión de ${current.label}`, `${current.label} stream`)}
             allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
             allowFullScreen
           />
         ) : (
-          <div className="player-placeholder px-small">Cargando emisión…</div>
+          <div className="player-placeholder px-small">{t("Cargando emisión…", "Loading stream…")}</div>
         )}
       </div>
     </div>

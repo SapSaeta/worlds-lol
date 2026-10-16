@@ -2,6 +2,7 @@
 
 // Piezas pequeñas del juego: sprites, iconos pixelados, barras de vida y fichas.
 
+import { useLocale } from "@/components/LocaleProvider";
 import { PixelImg } from "@/components/PixelImg";
 import { CLS_LABEL, type Derived } from "@/lib/game/engine";
 import type { GChamp, GItem, Stats } from "@/lib/game/types";
@@ -63,7 +64,8 @@ export function Portrait({ champ, size, side, className = "" }: { champ: GChamp;
 }
 
 export function TypeBadge({ cls }: { cls: string }) {
-  return <span className={`badge t-${cls}`}>{CLS_LABEL[cls as keyof typeof CLS_LABEL] ?? "Monstruo"}</span>;
+  const { t } = useLocale();
+  return <span className={`badge t-${cls}`}>{cls === "Monster" ? t("Monstruo", "Monster") : (CLS_LABEL[cls as keyof typeof CLS_LABEL] ?? cls)}</span>;
 }
 
 export function Hp({ hp, max, shield = 0, showNumbers = true }: { hp: number; max: number; shield?: number; showNumbers?: boolean }) {
@@ -84,25 +86,40 @@ export function Hp({ hp, max, shield = 0, showNumbers = true }: { hp: number; ma
   );
 }
 
-const STAT_LABEL: Record<string, string> = { hp: "Vida", ad: "Daño", ap: "Poder", ar: "Armadura", mr: "Res. mágica", crit: "Crítico", as: "Vel. ataque", ms: "Velocidad", ls: "Robo de vida" };
+const STAT_LABEL: Record<string, [string, string]> = {
+  hp: ["Vida", "Health"],
+  ad: ["Daño", "Damage"],
+  ap: ["Poder", "Ability power"],
+  ar: ["Armadura", "Armor"],
+  mr: ["Res. mágica", "Magic resist"],
+  crit: ["Crítico", "Crit"],
+  as: ["Vel. ataque", "Attack speed"],
+  ms: ["Velocidad", "Move speed"],
+  ls: ["Robo de vida", "Life steal"],
+};
 
-export function statsText(s: Stats) {
+type Tr = (es: string, en: string) => string;
+
+export function statsText(s: Stats, t: Tr = (es) => es) {
+  const pct = t(" %", "%");
   return Object.entries(s)
-    .map(([k, v]) => `+${k === "crit" || k === "as" || k === "ls" ? `${Math.round((v ?? 0) * 100)} %` : v} ${STAT_LABEL[k] ?? k}`)
+    .map(([k, v]) => `+${k === "crit" || k === "as" || k === "ls" ? `${Math.round((v ?? 0) * 100)}${pct}` : v} ${STAT_LABEL[k] ? t(...STAT_LABEL[k]) : k}`)
     .join(" · ");
 }
 
 export function ItemIcon({ item, size = 28 }: { item: GItem; size?: number }) {
+  const { t } = useLocale();
   // eslint-disable-next-line @next/next/no-img-element
-  return <img className="g-item" src={item.icon} alt={item.name} title={`${item.name}: ${statsText(item.stats)}`} width={size} height={size} loading="lazy" />;
+  return <img className="g-item" src={item.icon} alt={item.name} title={`${item.name}: ${statsText(item.stats, t)}`} width={size} height={size} loading="lazy" />;
 }
 
 export function StatLine({ d, magic }: { d: Derived; magic: boolean }) {
+  const { t } = useLocale();
   return (
     <div className="g-statline px-small">
-      <span>{magic ? `PH ${d.ap}` : `AD ${d.ad}`}</span>
-      <span>ARM {d.ar}</span>
-      <span>RM {d.mr}</span>
+      <span>{magic ? `${t("PH", "AP")} ${d.ap}` : `AD ${d.ad}`}</span>
+      <span>{t("ARM", "AR")} {d.ar}</span>
+      <span>{t("RM", "MR")} {d.mr}</span>
       {d.crit ? <span>CRIT {Math.round(d.crit * 100)}%</span> : null}
     </div>
   );

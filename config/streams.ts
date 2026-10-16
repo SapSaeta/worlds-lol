@@ -1,7 +1,9 @@
 // Lista de emisiones disponibles en el reproductor.
 // Para añadir o quitar un canal solo hay que editar este fichero.
-// Además de estos, la web añade automáticamente los canales oficiales en
-// español que la API de lolesports marque como en directo.
+// En español se ven los canales con lang "es" (más el oficial en inglés) y en
+// la versión inglesa los de lang "en" (más los oficiales en español al final).
+// Además, la web añade sola los canales oficiales en español o inglés que la
+// API de lolesports marque como en directo.
 
 export type StreamProvider = "twitch" | "youtube";
 
@@ -15,6 +17,8 @@ export type Stream = {
   lang: "es" | "en";
   /** Breve descripción para el menú */
   note?: string;
+  /** La misma descripción en inglés */
+  noteEn?: string;
 };
 
 export const STREAMS: Stream[] = [
@@ -26,6 +30,7 @@ export const STREAMS: Stream[] = [
     kind: "oficial",
     lang: "es",
     note: "Oficial España",
+    noteEn: "Official Spanish (Spain)",
   },
   {
     id: "latam",
@@ -35,6 +40,7 @@ export const STREAMS: Stream[] = [
     kind: "oficial",
     lang: "es",
     note: "Oficial Latinoamérica",
+    noteEn: "Official Spanish (Latin America)",
   },
   {
     id: "riot",
@@ -44,6 +50,7 @@ export const STREAMS: Stream[] = [
     kind: "oficial",
     lang: "en",
     note: "Oficial en inglés",
+    noteEn: "Official English broadcast",
   },
   { id: "ibai", label: "Ibai", provider: "twitch", channel: "ibai", kind: "cooficial", lang: "es" },
   { id: "jordilmk", label: "Jordi LMK", provider: "twitch", channel: "jordilmk", kind: "cooficial", lang: "es" },
@@ -56,7 +63,8 @@ export const STREAMS: Stream[] = [
   { id: "jonni", label: "Jonni", provider: "twitch", channel: "jonnijuro", kind: "cooficial", lang: "es" },
   { id: "nickdaboom", label: "Nickdaboom", provider: "twitch", channel: "nickdaboom", kind: "cooficial", lang: "es" },
   { id: "mfreak", label: "mfreak00", provider: "twitch", channel: "mfreak00", kind: "cooficial", lang: "es" },
+  { id: "caedrel", label: "Caedrel", provider: "twitch", channel: "caedrel", kind: "cooficial", lang: "en" },
   { id: "mercy", label: "Mercy Plays", provider: "twitch", channel: "mercyplaystw", kind: "cooficial", lang: "es" },
 ];
 
-export const DEFAULT_STREAM_ID = "lvp";
+export const DEFAULT_STREAM_ID = { es: "lvp", en: "riot" } as const;

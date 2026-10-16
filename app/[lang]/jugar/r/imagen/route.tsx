@@ -5,7 +5,8 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { ImageResponse } from "next/og";
 import { championIcon, getChampions } from "@/lib/ddragon";
-import { STAGE_SHORT, cardTitle, fmt, fromQuery, resultLine, resultSub, stageStates, statsLine } from "@/lib/game/result";
+import { cardTitle, fmt, fromQuery, resultLine, resultSub, stageShort, stageStates, statsLine } from "@/lib/game/result";
+import { isLocale, tr } from "@/lib/i18n";
 
 const file = (p: string) => readFile(join(process.cwd(), p));
 const svgData = async (p: string) => `data:image/svg+xml;base64,${(await file(p)).toString("base64")}`;
@@ -13,9 +14,11 @@ const svgData = async (p: string) => `data:image/svg+xml;base64,${(await file(p)
 /** La fuente pixel no trae mayúsculas con tilde: el titular va sin ellas. */
 const plain = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").normalize("NFC");
 
-export async function GET(req: Request) {
+export async function GET(req: Request, { params }: RouteContext<"/[lang]/jugar/r/imagen">) {
+  const { lang } = await params;
+  const l = isLocale(lang) ? lang : "es";
   const r = fromQuery(new URL(req.url).searchParams);
-  if (!r) return new Response("Resultado no válido", { status: 400 });
+  if (!r) return new Response(tr(l, "Resultado no válido", "Invalid result"), { status: 400 });
 
   const [pixel, body, scene, cup, dd] = await Promise.all([
     file("assets/fonts/PressStart2P-Regular.ttf"),
@@ -26,7 +29,7 @@ export async function GET(req: Request) {
   ]);
   const champs = r.champs.filter((c) => dd?.champions[c.id]);
   const accent = r.champion ? "#f8d860" : r.stage >= 3 ? "#ff8a3d" : "#ff5a5a";
-  const head = plain(resultLine(r).toUpperCase());
+  const head = plain(resultLine(r, l).toUpperCase());
   const headSize = Math.min(54, Math.floor(1060 / head.length));
   const outline = "4px 4px 0 #1e1e1e";
 
@@ -93,7 +96,7 @@ export async function GET(req: Request) {
             textShadow: "3px 3px 0 #1e1e1e",
           }}
         >
-          {cardTitle(r)}
+          {cardTitle(r, l)}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -120,7 +123,7 @@ export async function GET(req: Request) {
             textShadow: "2px 2px 0 #1e1e1e",
           }}
         >
-          {resultSub(r)}
+          {resultSub(r, l)}
         </div>
 
         <div style={{ display: "flex", gap: 12 }}>
@@ -141,7 +144,7 @@ export async function GET(req: Request) {
                 boxShadow: "5px 5px 0 #000",
               }}
             >
-              {STAGE_SHORT[i]}
+              {stageShort(l)[i]}
             </div>
           ))}
         </div>
@@ -166,7 +169,7 @@ export async function GET(req: Request) {
                   color: "#4a4a44",
                 }}
               >
-                ENTRENADOR
+                {tr(l, "ENTRENADOR", "TRAINER")}
               </span>
               <span style={{ fontSize: 44, color: "#1e1e1e" }}>{r.name}</span>
               <span style={{ fontSize: 32, color: "#4a4a44" }}>{r.team}</span>
@@ -191,7 +194,7 @@ export async function GET(req: Request) {
                       marginTop: 4,
                     }}
                   >
-                    Nv {c.level}
+                    {tr(l, "Nv", "Lv")} {c.level}
                   </span>
                 </div>
               ))}
@@ -216,7 +219,7 @@ export async function GET(req: Request) {
                 color: "#f9d97c",
               }}
             >
-              PUNTOS
+              {tr(l, "PUNTOS", "POINTS")}
             </span>
             <span
               style={{
@@ -227,9 +230,9 @@ export async function GET(req: Request) {
                 marginTop: 10,
               }}
             >
-              {fmt(r.score)}
+              {fmt(r.score, l)}
             </span>
-            <span style={{ fontSize: 26, color: "#cfe4ff", marginTop: 10 }}>{statsLine(r)}</span>
+            <span style={{ fontSize: 26, color: "#cfe4ff", marginTop: 10 }}>{statsLine(r, l)}</span>
           </div>
         </div>
       </div>
@@ -251,8 +254,8 @@ export async function GET(req: Request) {
           color: "#1e1e1e",
         }}
       >
-        <span style={{ fontSize: 24 }}>¿ME SUPERAS?</span>
-        <span style={{ fontSize: 18 }}>worlddex.lol/jugar</span>
+        <span style={{ fontSize: 24 }}>{tr(l, "¿ME SUPERAS?", "CAN YOU BEAT ME?")}</span>
+        <span style={{ fontSize: 18 }}>{tr(l, "worlddex.lol/jugar", "worlddex.lol/en/play")}</span>
       </div>
     </div>,
     {

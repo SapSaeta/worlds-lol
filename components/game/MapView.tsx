@@ -1,22 +1,24 @@
 "use client";
 
+import { useLocale } from "@/components/LocaleProvider";
 import { PixelImg } from "@/components/PixelImg";
 import { TeamLogo } from "@/components/TeamLogo";
 import { PixelIcon } from "@/components/game/parts";
 import { STAGES, monsterIcon, monsterName, reachable, type MapNode, type NodeKind, type Run } from "@/lib/game/engine";
 import type { GameData } from "@/lib/game/types";
 
-const KIND_LABEL: Record<NodeKind, string> = {
-  fight: "Combate",
-  shop: "Tienda",
-  event: "Evento",
-  fountain: "Fuente",
-  objective: "Objetivo",
-  boss: "Jefe",
+const KIND_LABEL: Record<NodeKind, [string, string]> = {
+  fight: ["Combate", "Battle"],
+  shop: ["Tienda", "Shop"],
+  event: ["Evento", "Event"],
+  fountain: ["Fuente", "Fountain"],
+  objective: ["Objetivo", "Objective"],
+  boss: ["Jefe", "Boss"],
 };
 
 /** Mapa de la fase sobre la Grieta: de tu base (abajo) al nexo rival (arriba), con los caminos posibles. */
 export function MapView({ run, data, onEnter }: { run: Run; data: GameData; onEnter: (row: number, col: number) => void }) {
+  const { t } = useLocale();
   const map = run.maps[run.stage];
   const rows = map.rows;
   const next = reachable(run);
@@ -24,12 +26,12 @@ export function MapView({ run, data, onEnter }: { run: Run; data: GameData; onEn
   const boss = data.teams.find((t) => t.code === map.boss);
   const x = (i: number, n: number) => ((i + 1) / (n + 1)) * 100;
   const y = (r: number) => 100 - ((r + 0.5) / rows.length) * 100;
-  const title = (n: MapNode) => (n.kind === "objective" && n.monster ? monsterName(n.monster, n.drake) : n.kind === "boss" ? `Jefe: ${boss?.name ?? map.boss}` : KIND_LABEL[n.kind]);
+  const title = (n: MapNode) => (n.kind === "objective" && n.monster ? monsterName(n.monster, n.drake) : n.kind === "boss" ? `${t("Jefe", "Boss")}: ${boss?.name ?? map.boss}` : t(...KIND_LABEL[n.kind]));
 
   return (
     <div className="g-map card">
       <div className="g-map-head">
-        <div className="g-stages" aria-label="Fases">
+        <div className="g-stages" aria-label={t("Fases", "Stages")}>
           {STAGES.map((s, i) => (
             <span key={s.name} className={`g-pip${i < run.stage ? " done" : i === run.stage ? " now" : ""}`} title={s.name} />
           ))}
@@ -38,7 +40,7 @@ export function MapView({ run, data, onEnter }: { run: Run; data: GameData; onEn
           {map.name} <span className="muted">· {map.city}</span>
         </div>
         <div className="g-map-boss px-small">
-          Jefe: <TeamLogo code={map.boss} image={boss?.image ?? ""} size={18} /> {boss?.name ?? map.boss}
+          {t("Jefe", "Boss")}: <TeamLogo code={map.boss} image={boss?.image ?? ""} size={18} /> {boss?.name ?? map.boss}
         </div>
       </div>
       <div className="g-rift">
@@ -94,7 +96,7 @@ export function MapView({ run, data, onEnter }: { run: Run; data: GameData; onEn
       <div className="g-legend px-small">
         {(Object.keys(KIND_LABEL) as NodeKind[]).map((k) => (
           <span key={k}>
-            <PixelIcon name={k} size={14} /> {KIND_LABEL[k]}
+            <PixelIcon name={k} size={14} /> {t(...KIND_LABEL[k])}
           </span>
         ))}
       </div>

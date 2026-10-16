@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Stream } from "@/config/streams";
+import { useLocale } from "@/components/LocaleProvider";
 import { NextMatchPopup, pickNextMatch } from "@/components/NextMatchPopup";
 import { usePlayer } from "@/components/player/PlayerProvider";
 import type { LiveStream, Match } from "@/lib/types";
@@ -13,6 +14,7 @@ import type { LiveStream, Match } from "@/lib/types";
  */
 export function StreamPlayer({ liveStreams, matches }: { liveStreams: LiveStream[]; matches: Match[] }) {
   const { streams, current, liveChannels, choose, setLiveStreams, setSlot, isFullscreen, toggleFullscreen } = usePlayer();
+  const { locale, t } = useLocale();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -41,10 +43,19 @@ export function StreamPlayer({ liveStreams, matches }: { liveStreams: LiveStream
     setMenuOpen(false);
   }
 
-  const groups: { title: string; items: Stream[] }[] = [
-    { title: "Oficiales", items: streams.filter((s) => s.kind === "oficial") },
-    { title: "Cooficiales en español", items: streams.filter((s) => s.kind === "cooficial") },
-  ];
+  const groups: { title: string; items: Stream[] }[] =
+    locale === "en"
+      ? [
+          { title: "Official", items: streams.filter((s) => s.kind === "oficial" && s.lang === "en") },
+          { title: "Co-streams", items: streams.filter((s) => s.kind === "cooficial") },
+          { title: "In Spanish", items: streams.filter((s) => s.kind === "oficial" && s.lang === "es") },
+        ]
+      : [
+          { title: "Oficiales", items: streams.filter((s) => s.kind === "oficial") },
+          { title: "Cooficiales en español", items: streams.filter((s) => s.kind === "cooficial") },
+        ];
+  const kindLabel = (k: Stream["kind"]) => (k === "oficial" ? t("oficial", "official") : t("cooficial", "co-stream"));
+  const note = locale === "en" ? (current.noteEn ?? current.note) : current.note;
 
   return (
     <div className="player-col">
@@ -60,21 +71,21 @@ export function StreamPlayer({ liveStreams, matches }: { liveStreams: LiveStream
       <div className="player-bar card" ref={menuRef}>
         <div className="now">
           <span className="name bold">{current.label}</span>
-          <span className={`badge ${current.kind}`}>{current.kind}</span>
+          <span className={`badge ${current.kind}`}>{kindLabel(current.kind)}</span>
           <span className={`badge ${current.lang}`}>{current.lang}</span>
-          {current.note ? <span className="muted" style={{ whiteSpace: "nowrap" }}>{current.note}</span> : null}
+          {note ? <span className="muted" style={{ whiteSpace: "nowrap" }}>{note}</span> : null}
         </div>
 
         <button className="btn" aria-expanded={menuOpen} aria-pressed={menuOpen} onClick={() => setMenuOpen((o) => !o)}>
-          Cambiar emisión
+          {t("Cambiar emisión", "Change stream")}
         </button>
-        <button className="btn dark" onClick={toggleFullscreen} aria-label="Pantalla completa">
-          {isFullscreen ? "Salir" : "Pantalla completa"}
+        <button className="btn dark" onClick={toggleFullscreen} aria-label={t("Pantalla completa", "Fullscreen")}>
+          {isFullscreen ? t("Salir", "Exit") : t("Pantalla completa", "Fullscreen")}
         </button>
 
         {menuOpen ? (
           <div ref={listRef} className="stream-menu card" role="menu">
-            {groups.map((g) => (
+            {groups.filter((g) => g.items.length).map((g) => (
               <div key={g.title}>
                 <h3 className="px-small">{g.title}</h3>
                 {g.items.map((s) => (
@@ -87,7 +98,7 @@ export function StreamPlayer({ liveStreams, matches }: { liveStreams: LiveStream
                     onClick={() => pick(s.id)}
                   >
                     <span className="name">{s.label}</span>
-                    {liveChannels.has(s.channel.toLowerCase()) ? <span className="badge live">En vivo</span> : null}
+                    {liveChannels.has(s.channel.toLowerCase()) ? <span className="badge live">{t("En vivo", "Live")}</span> : null}
                     <span className={`badge ${s.lang}`}>{s.lang}</span>
                   </button>
                 ))}

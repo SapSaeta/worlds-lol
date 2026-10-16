@@ -1,4 +1,5 @@
 import { AUTHOR } from "@/config/site";
+import { tr, type Locale } from "@/lib/i18n";
 
 // Icono "in" de LinkedIn dibujado en rejilla de 10x10 para que case con el pixel art
 function LinkedInIcon() {
@@ -14,12 +15,12 @@ function LinkedInIcon() {
   );
 }
 
-export function AuthorBadge() {
+export function AuthorBadge({ locale }: { locale: Locale }) {
   return (
-    <a className="author-badge" href={AUTHOR.linkedin} target="_blank" rel="noopener noreferrer" aria-label={`Desarrollado por ${AUTHOR.name}: LinkedIn`}>
+    <a className="author-badge" href={AUTHOR.linkedin} target="_blank" rel="noopener noreferrer" aria-label={`${tr(locale, "Desarrollado por", "Built by")} ${AUTHOR.name}: LinkedIn`}>
       <LinkedInIcon />
       <span>
-        Desarrollado por <b>{AUTHOR.name}</b>
+        {tr(locale, "Desarrollado por", "Built by")} <b>{AUTHOR.name}</b>
       </span>
     </a>
   );

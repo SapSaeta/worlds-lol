@@ -3,7 +3,8 @@
 // de sus últimas series oficiales (en su liga y en el torneo).
 
 import { TOURNAMENT, type TournamentConfig } from "@/config/tournament";
-import { getChampions, type Champion } from "@/lib/ddragon";
+import { DD_LANG, getChampions, type Champion } from "@/lib/ddragon";
+import type { Locale } from "@/lib/i18n";
 import { mapLimit } from "@/lib/gamestats";
 import { api, feedWindow, fetchGpr, fetchTeamDetails, fetchTeamSlugs, leagueIdsByName, type Json, type TeamDetails } from "@/lib/lolesports";
 import { classifySpell } from "@/lib/game/spells";
@@ -128,7 +129,38 @@ async function getItems(version: string): Promise<GItem[]> {
   return items.sort((a, b) => a.gold - b.gold);
 }
 
-export async function getGameData(t: TournamentConfig = TOURNAMENT): Promise<GameData> {
+/**
+ * Datos del juego en el idioma pedido. Las habilidades se clasifican siempre
+ * con la descripción en español; en inglés solo cambian los nombres de
+ * campeones, títulos, habilidades y objetos.
+ */
+export async function getGameData(t: TournamentConfig = TOURNAMENT, locale: Locale = "es"): Promise<GameData> {
+  const data = await buildGameData(t);
+  return locale === "en" ? localizeGameData(data, DD_LANG.en) : data;
+}
+
+async function localizeGameData(data: GameData, lang: string): Promise<GameData> {
+  const v = data.version;
+  const json = (path: string) =>
+    fetch(`${DD}/cdn/${v}/data/${lang}/${path}`, { next: { revalidate: 86400 } }).then((r) => (r.ok ? r.json() : Promise.reject(new Error(`ddragon ${path} → HTTP ${r.status}`))));
+  const [champs, items] = await Promise.all([getChampions(v, lang).catch(() => null), json("item.json").catch(() => null)]);
+  const ids = Object.keys(data.champions);
+  const spells = await mapLimit(ids, 10, async (id) => {
+    const c: Json = (await json(`champion/${id}.json`)).data?.[id];
+    return ((c?.spells ?? []) as Json[]).slice(0, 4).map((s) => String(s.name ?? ""));
+  });
+  const champions: Record<string, GChamp> = {};
+  for (const [i, id] of ids.entries()) {
+    const c = data.champions[id];
+    const en = champs?.champions[id];
+    const names = spells[i].status === "fulfilled" ? spells[i].value : [];
+    champions[id] = { ...c, name: en?.name ?? c.name, title: en?.title ?? c.title, spells: c.spells.map((s, k) => ({ ...s, name: names[k] || s.name })) };
+  }
+  const itemNames: Record<string, Json> = items?.data ?? {};
+  return { ...data, champions, items: data.items.map((it) => ({ ...it, name: itemNames[it.id]?.name ?? it.name })) };
+}
+
+async function buildGameData(t: TournamentConfig): Promise<GameData> {
   const warnings: string[] = [];
   const warn = (what: string) => (err: unknown) => {
     warnings.push(`${what}: ${err instanceof Error ? err.message : String(err)}`);

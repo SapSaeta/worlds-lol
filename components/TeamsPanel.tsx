@@ -2,6 +2,7 @@
 
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { HpBar, ROLE_ORDER, RoleBadge, StatBars } from "@/components/Pixel";
+import { useLocale } from "@/components/LocaleProvider";
 import { TeamLogo } from "@/components/TeamLogo";
 import type { Match, Team, WorldsData } from "@/lib/types";
 
@@ -24,9 +25,6 @@ function sortTeams(teams: Team[], key: SortKey) {
   });
 }
 
-const timeFmt = new Intl.DateTimeFormat("es-ES", { hour: "2-digit", minute: "2-digit" });
-const dayFmt = new Intl.DateTimeFormat("es-ES", { weekday: "long", day: "numeric", month: "long" });
-
 // Las horas dependen de la zona horaria del visitante, así que solo se pintan
 // en el navegador para no desajustar el HTML generado en el servidor.
 function useMounted() {
@@ -35,13 +33,25 @@ function useMounted() {
   return mounted;
 }
 
-const fmtTime = (iso: string, mounted: boolean) => (mounted ? timeFmt.format(new Date(iso)) : "--:--");
-const fmtDay = (iso: string, mounted: boolean) => (mounted ? dayFmt.format(new Date(iso)) : "");
+/** Hora y día en el idioma de la página; vacíos hasta que carga el navegador. */
+function useDates() {
+  const mounted = useMounted();
+  const { intl } = useLocale();
+  return useMemo(() => {
+    const timeFmt = new Intl.DateTimeFormat(intl, { hour: "2-digit", minute: "2-digit" });
+    const dayFmt = new Intl.DateTimeFormat(intl, { weekday: "long", day: "numeric", month: "long" });
+    return {
+      time: (iso: string) => (mounted ? timeFmt.format(new Date(iso)) : "--:--"),
+      day: (iso: string) => (mounted ? dayFmt.format(new Date(iso)) : ""),
+    };
+  }, [mounted, intl]);
+}
 
 function TeamDex({ team, matches }: { team: Team; matches: Match[] }) {
   const next = matches.find((m) => m.state !== "completed" && m.teams.some((t) => t.code === team.code));
   const rival = next?.teams.find((t) => t.code !== team.code);
-  const mounted = useMounted();
+  const dates = useDates();
+  const { t } = useLocale();
   const players = [...team.players].sort((a, b) => ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role));
   const games = team.gameWins + team.gameLosses;
   return (
@@ -56,8 +66,8 @@ function TeamDex({ team, matches }: { team: Team; matches: Match[] }) {
         <div className="badges" style={{ marginTop: 6 }}>
           {team.region ? <span className="badge region">{team.region}</span> : null}
           {team.gpr ? (
-            <span className="badge gpr" title={`Ranking global de Riot: ${team.gpr.score} puntos`}>
-              #{team.gpr.rank} mundial
+            <span className="badge gpr" title={t(`Ranking global de Riot: ${team.gpr.score} puntos`, `Riot Global Power Rankings: ${team.gpr.score} points`)}>
+              #{team.gpr.rank} {t("mundial", "world")}
             </span>
           ) : null}
         </div>
@@ -65,18 +75,18 @@ function TeamDex({ team, matches }: { team: Team; matches: Match[] }) {
       <StatBars
         stats={[
           { k: "Series", v: team.wins, max: Math.max(team.wins + team.losses, 1), text: `${team.wins}-${team.losses}` },
-          { k: "Partidas", v: team.gameWins, max: Math.max(games, 1), text: `${team.gameWins}-${team.gameLosses}` },
+          { k: t("Partidas", "Games"), v: team.gameWins, max: Math.max(games, 1), text: `${team.gameWins}-${team.gameLosses}` },
           { k: "Win%", v: winrate(team) * 100, max: 100, text: `${Math.round(winrate(team) * 100)}%`, gold: true },
         ]}
       />
       {next && rival ? (
         <div className="inset" style={{ padding: 8 }}>
-          <div className="px-small muted">Siguiente combate</div>
+          <div className="px-small muted">{t("Siguiente combate", "Next battle")}</div>
           <div className="bold" style={{ fontSize: 22, marginTop: 4 }}>
             vs {rival.code}
           </div>
           <div className="px-small" style={{ color: "var(--ink-2)" }}>
-            {next.state === "inProgress" ? "¡En juego!" : `${fmtDay(next.startTime, mounted)} · ${fmtTime(next.startTime, mounted)}`}
+            {next.state === "inProgress" ? t("¡En juego!", "Live now!") : `${dates.day(next.startTime)} · ${dates.time(next.startTime)}`}
           </div>
         </div>
       ) : null}
@@ -99,6 +109,9 @@ function StandingsTab({ data }: { data: WorldsData }) {
   const [sort, setSort] = useState<SortKey>("record");
   const [region, setRegion] = useState<string | null>(null);
   const [open, setOpen] = useState<string | null>(null);
+  const { t } = useLocale();
+  const winLabel = t("Victoria", "Win");
+  const lossLabel = t("Derrota", "Loss");
 
   const regions = useMemo(
     () => [...new Set(data.teams.map((t) => t.region).filter((r): r is string => !!r))].sort(),
@@ -119,9 +132,9 @@ function StandingsTab({ data }: { data: WorldsData }) {
   return (
     <>
       {regions.length > 1 ? (
-        <div className="filter-row" role="group" aria-label="Filtrar por región">
+        <div className="filter-row" role="group" aria-label={t("Filtrar por región", "Filter by region")}>
           <button className="chip" aria-pressed={region === null} onClick={() => setRegion(null)}>
-            Todas
+            {t("Todas", "All")}
           </button>
           {regions.map((r) => (
             <button key={r} className="chip" aria-pressed={region === r} onClick={() => setRegion(region === r ? null : r)}>
@@ -133,10 +146,10 @@ function StandingsTab({ data }: { data: WorldsData }) {
       <table className="team-table">
         <thead>
           <tr>
-            <th title="Ranking global de Riot">{sortBtn("gpr", "#")}</th>
-            <th>{sortBtn("name", "Equipo")}</th>
-            <th>{sortBtn("record", "V-D")}</th>
-            <th>{sortBtn("games", "Forma")}</th>
+            <th title={t("Ranking global de Riot", "Riot Global Power Rankings")}>{sortBtn("gpr", "#")}</th>
+            <th>{sortBtn("name", t("Equipo", "Team"))}</th>
+            <th>{sortBtn("record", t("V-D", "W-L"))}</th>
+            <th>{sortBtn("games", t("Forma", "Form"))}</th>
           </tr>
         </thead>
         <tbody>
@@ -157,7 +170,7 @@ function StandingsTab({ data }: { data: WorldsData }) {
                   <HpBar value={t.wins + t.losses ? winrate(t) : 1} />
                   <div className="form">
                     {t.form.slice(-5).map((f, j) => (
-                      <i key={j} className={f} title={f === "W" ? "Victoria" : "Derrota"} />
+                      <i key={j} className={f} title={f === "W" ? winLabel : lossLabel} />
                     ))}
                   </div>
                 </td>
@@ -173,13 +186,14 @@ function StandingsTab({ data }: { data: WorldsData }) {
           ))}
         </tbody>
       </table>
-      {teams.length === 0 ? <p className="muted">Aún no hay equipos con partidos.</p> : null}
+      {teams.length === 0 ? <p className="muted">{t("Aún no hay equipos con partidos.", "No teams with matches yet.")}</p> : null}
     </>
   );
 }
 
 function MatchesTab({ data }: { data: WorldsData }) {
-  const mounted = useMounted();
+  const dates = useDates();
+  const { t } = useLocale();
   // Partidos en juego, los próximos y los últimos resultados, agrupados por día.
   const live = data.matches.filter((m) => m.state === "inProgress");
   const upcoming = data.matches.filter((m) => m.state === "unstarted").slice(0, 12);
@@ -195,13 +209,13 @@ function MatchesTab({ data }: { data: WorldsData }) {
       <section>
         <h3 className="px-small day-sep">{title}</h3>
         {list.map((m) => {
-          const day = fmtDay(m.startTime, mounted);
+          const day = dates.day(m.startTime);
           const showDay = day !== lastDay;
           lastDay = day;
           return (
             <Fragment key={m.id}>
               {showDay && day ? <div className="muted" style={{ margin: "8px 0 6px", fontSize: 18 }}>{day}</div> : null}
-              <MatchRow m={m} mounted={mounted} />
+              <MatchRow m={m} dates={dates} />
             </Fragment>
           );
         })}
@@ -211,15 +225,16 @@ function MatchesTab({ data }: { data: WorldsData }) {
 
   return (
     <>
-      {renderGroup("● En juego", live)}
-      {renderGroup("Próximos", upcoming)}
-      {renderGroup("Resultados", recent)}
-      {!data.matches.length ? <p className="muted">No hay partidos en el calendario.</p> : null}
+      {renderGroup(t("● En juego", "● Live"), live)}
+      {renderGroup(t("Próximos", "Upcoming"), upcoming)}
+      {renderGroup(t("Resultados", "Results"), recent)}
+      {!data.matches.length ? <p className="muted">{t("No hay partidos en el calendario.", "No matches on the schedule.")}</p> : null}
     </>
   );
 }
 
-function MatchRow({ m, mounted }: { m: Match; mounted: boolean }) {
+function MatchRow({ m, dates }: { m: Match; dates: ReturnType<typeof useDates> }) {
+  const { t } = useLocale();
   const [a, b] = m.teams;
   const done = m.state === "completed";
   const aLost = done && a.outcome === "loss";
@@ -232,7 +247,7 @@ function MatchRow({ m, mounted }: { m: Match; mounted: boolean }) {
       </div>
       <div className="score">
         {m.state === "unstarted" ? (
-          <span className="px-small">{fmtTime(m.startTime, mounted)}</span>
+          <span className="px-small">{dates.time(m.startTime)}</span>
         ) : (
           <>
             {a.gameWins} - {b.gameWins}
@@ -245,7 +260,7 @@ function MatchRow({ m, mounted }: { m: Match; mounted: boolean }) {
       </div>
       <div className="meta px-small muted">
         <span>{m.blockName}</span>
-        <span>{m.state === "inProgress" ? <span style={{ color: "var(--red)" }}>En vivo</span> : `Bo${m.bestOf}`}</span>
+        <span>{m.state === "inProgress" ? <span style={{ color: "var(--red)" }}>{t("En vivo", "Live")}</span> : `Bo${m.bestOf}`}</span>
       </div>
     </div>
   );
@@ -253,30 +268,31 @@ function MatchRow({ m, mounted }: { m: Match; mounted: boolean }) {
 
 export function TeamsPanel({ data, loading }: { data: WorldsData; loading: boolean }) {
   const [tab, setTab] = useState<"tabla" | "partidos">("tabla");
-  const mounted = useMounted();
-  const updated = fmtTime(data.updatedAt, mounted);
+  const dates = useDates();
+  const { t } = useLocale();
+  const updated = dates.time(data.updatedAt);
   return (
     <aside className="side-panel card">
       <div className="side-head">
-        <div className="px-title">{tab === "tabla" ? "EQUIPOS" : "COMBATES"}</div>
+        <div className="px-title">{tab === "tabla" ? t("EQUIPOS", "TEAMS") : t("COMBATES", "BATTLES")}</div>
       </div>
       <div className="side-tabs" role="tablist">
         <button className="btn sm" role="tab" aria-pressed={tab === "tabla"} onClick={() => setTab("tabla")}>
-          Clasificación
+          {t("Clasificación", "Standings")}
         </button>
         <button className="btn sm" role="tab" aria-pressed={tab === "partidos"} onClick={() => setTab("partidos")}>
-          Partidos
+          {t("Partidos", "Matches")}
         </button>
       </div>
       <div className="side-body">
         {data.source === "demo" ? (
-          <div className="demo-banner px-small">Datos de demostración: la API oficial no responde ahora mismo.</div>
+          <div className="demo-banner px-small">{t("Datos de demostración: la API oficial no responde ahora mismo.", "Demo data: the official API is not responding right now.")}</div>
         ) : null}
         {tab === "tabla" ? <StandingsTab data={data} /> : <MatchesTab data={data} />}
       </div>
       <div className="side-foot px-small">
         <span>{data.source === "demo" ? "Demo" : "lolesports.com"}</span>
-        <span>{loading ? "Actualizando…" : `Act. ${updated}`}</span>
+        <span>{loading ? t("Actualizando…", "Updating…") : `${t("Act.", "Upd.")} ${updated}`}</span>
       </div>
     </aside>
   );

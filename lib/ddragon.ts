@@ -1,7 +1,8 @@
 // Data Dragon: datos estáticos oficiales de Riot (campeones, habilidades, objetos).
 
 const DD = "https://ddragon.leagueoflegends.com";
-const LANG = "es_ES";
+/** Idioma de Data Dragon para cada idioma de la web. */
+export const DD_LANG = { es: "es_ES", en: "en_US" } as const;
 
 export type Champion = {
   id: string;
@@ -20,9 +21,9 @@ export async function getVersion(): Promise<string> {
   return versions[0];
 }
 
-export async function getChampions(version?: string): Promise<{ version: string; champions: Record<string, Champion> }> {
+export async function getChampions(version?: string, lang: string = DD_LANG.es): Promise<{ version: string; champions: Record<string, Champion> }> {
   const v = version ?? (await getVersion());
-  const res = await fetch(`${DD}/cdn/${v}/data/${LANG}/champion.json`, { next: { revalidate: 86400 } });
+  const res = await fetch(`${DD}/cdn/${v}/data/${lang}/champion.json`, { next: { revalidate: 86400 } });
   if (!res.ok) throw new Error(`ddragon champions → HTTP ${res.status}`);
   const json = await res.json();
   const champions: Record<string, Champion> = {};
