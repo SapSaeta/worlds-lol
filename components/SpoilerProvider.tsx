@@ -46,7 +46,7 @@ export function SpoilerProvider({ children }: { children: React.ReactNode }) {
   const [opened, setOpened] = useState<ReadonlySet<string>>(() => new Set());
 
   useEffect(() => {
-    setOn(read(NOSPOIL_KEY) === "1");
+    setOn(read(NOSPOIL_KEY) !== "0");
     try {
       const ids = JSON.parse(read(REVEALED_KEY) ?? "[]");
       if (Array.isArray(ids)) setRevealed(new Set(ids.filter((x) => typeof x === "string")));
@@ -63,7 +63,7 @@ export function SpoilerProvider({ children }: { children: React.ReactNode }) {
 
   const toggle = useCallback(() => {
     setOn((v) => {
-      write(NOSPOIL_KEY, v ? null : "1");
+      write(NOSPOIL_KEY, v ? "0" : "1");
       return !v;
     });
     setOpened(new Set());

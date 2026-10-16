@@ -3,7 +3,10 @@
 
 import type { Match } from "@/lib/types";
 
-/** Clave en localStorage del interruptor (también la lee el script previo a la carga en el layout). */
+/**
+ * Clave en localStorage del interruptor (también la lee el script previo a la
+ * carga en el layout). El modo viene activado: solo se apaga si vale "0".
+ */
 export const NOSPOIL_KEY = "nospoil";
 /** Partidos que el visitante ya ha destapado, para que sigan a la vista al volver. */
 export const REVEALED_KEY = "nospoil-revealed";
@@ -14,7 +17,7 @@ export const REVEALED_MAX = 400;
 export const NOSPOIL_ATTR = "data-nospoil";
 
 /** Script que marca <html> antes de pintar para no enseñar resultados mientras carga React. */
-export const NOSPOIL_BOOT = `try{if(localStorage.getItem(${JSON.stringify(NOSPOIL_KEY)})==="1")document.documentElement.setAttribute(${JSON.stringify(NOSPOIL_ATTR)},"")}catch(e){}`;
+export const NOSPOIL_BOOT = `(function(){var off=false;try{off=localStorage.getItem(${JSON.stringify(NOSPOIL_KEY)})==="0"}catch(e){}if(!off)document.documentElement.setAttribute(${JSON.stringify(NOSPOIL_ATTR)},"")})()`;
 
 export type SpoilerView = {
   /** El modo está activo */
