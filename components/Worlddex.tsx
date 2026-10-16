@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocale } from "@/components/LocaleProvider";
 import { HpBar, ROLE_ORDER, RoleBadge, StatBars, roleLabel } from "@/components/Pixel";
 import { PixelImg } from "@/components/PixelImg";
+import { SpoilerGate, useGate, useSpoilers } from "@/components/SpoilerProvider";
 import { TeamLogo } from "@/components/TeamLogo";
 import { TournamentMap } from "@/components/TournamentMap";
 import type { StageInfo } from "@/config/tournament";
@@ -64,6 +65,20 @@ export function Worlddex({ stats, teams, ongoing, tournaments, map, stages }: Pr
   };
 
   const played = stats.players.filter((p) => p.games > 0).length;
+  // Las estadísticas del torneo en curso destripan resultados; las de ediciones pasadas, no.
+  const gate = useGate("estadisticas");
+  const hideStats = ongoing && gate.hidden;
+  const { guard } = useSpoilers();
+  const statsGate = (
+    <SpoilerGate
+      text={t(
+        "Modo sin spoilers: las estadísticas de este torneo pueden destripar resultados.",
+        "No-spoilers mode: this tournament's stats can give results away.",
+      )}
+      action={t("Ver estadísticas", "Show stats")}
+      onShow={gate.show}
+    />
+  );
 
   return (
     <div className="page">
@@ -109,9 +124,30 @@ export function Worlddex({ stats, teams, ongoing, tournaments, map, stages }: Pr
       ) : null}
 
       {tab === "mapa" ? <TournamentMap map={map} info={stages} teams={teams} /> : null}
-      {tab === "equipos" ? <TeamsTab stats={stats} teams={teams} ongoing={ongoing} /> : null}
-      {tab === "jugadores" ? <PlayersTab stats={stats} tournaments={tournaments} /> : null}
-      {tab === "campeones" ? <ChampionsTab stats={stats} tournaments={tournaments} /> : null}
+      {tab === "equipos" ? (
+        <div className={ongoing ? guard : ""}>
+          {hideStats ? statsGate : null}
+          <TeamsTab stats={stats} teams={teams} ongoing={ongoing} hideResults={hideStats} />
+        </div>
+      ) : null}
+      {tab === "jugadores" ? (
+        hideStats ? (
+          statsGate
+        ) : (
+          <div className={ongoing ? guard : ""}>
+            <PlayersTab stats={stats} tournaments={tournaments} />
+          </div>
+        )
+      ) : null}
+      {tab === "campeones" ? (
+        hideStats ? (
+          statsGate
+        ) : (
+          <div className={ongoing ? guard : ""}>
+            <ChampionsTab stats={stats} tournaments={tournaments} />
+          </div>
+        )
+      ) : null}
     </div>
   );
 }
@@ -142,7 +178,7 @@ type TeamSort = "ranking" | "region";
 const byRegion = (a: Team, b: Team) => (a.region ?? "").localeCompare(b.region ?? "") || a.code.localeCompare(b.code);
 const byRanking = (a: Team, b: Team) => (a.gpr?.rank ?? Infinity) - (b.gpr?.rank ?? Infinity) || byRegion(a, b);
 
-function TeamsTab({ stats, teams, ongoing }: { stats: StatsData; teams: Team[]; ongoing: boolean }) {
+function TeamsTab({ stats, teams, ongoing, hideResults }: { stats: StatsData; teams: Team[]; ongoing: boolean; hideResults: boolean }) {
   const { t: tt, intl } = useLocale();
   const shortDate = new Intl.DateTimeFormat(intl, { day: "numeric", month: "short", timeZone: "UTC" });
   const ranked = teams.filter((t) => t.gpr);
@@ -202,15 +238,19 @@ function TeamsTab({ stats, teams, ongoing }: { stats: StatsData; teams: Team[]; 
                   </span>
                 ) : null}
               </div>
-              <StatBars
-                stats={[
-                  { k: tt("Vic", "W"), v: t.wins, max: Math.max(series, 1) },
-                  { k: tt("Der", "L"), v: t.losses, max: Math.max(series, 1) },
-                  { k: tt("Part", "Gms"), v: t.gameWins + t.gameLosses, max: maxGames },
-                  { k: "Win%", v: wr * 100, max: 100, text: `${Math.round(wr * 100)}%`, gold: true },
-                ]}
-              />
-              <HpBar value={series ? wr : 1} label={series ? `${t.wins}/${series} series` : tt("Sin jugar", "Not played")} />
+              {hideResults ? null : (
+                <>
+                  <StatBars
+                    stats={[
+                      { k: tt("Vic", "W"), v: t.wins, max: Math.max(series, 1) },
+                      { k: tt("Der", "L"), v: t.losses, max: Math.max(series, 1) },
+                      { k: tt("Part", "Gms"), v: t.gameWins + t.gameLosses, max: maxGames },
+                      { k: "Win%", v: wr * 100, max: 100, text: `${Math.round(wr * 100)}%`, gold: true },
+                    ]}
+                  />
+                  <HpBar value={series ? wr : 1} label={series ? `${t.wins}/${series} series` : tt("Sin jugar", "Not played")} />
+                </>
+              )}
               <div className="move inset">
                 <div className="move-title bold">{tt("Plantilla", "Roster")}</div>
                 {roster.length ? (
@@ -219,14 +259,14 @@ function TeamsTab({ stats, teams, ongoing }: { stats: StatsData; teams: Team[]; 
                       <li key={p.id}>
                         <RoleBadge role={p.role} />
                         <span className="bold">{p.name}</span>
-                        {p.games ? <span className="muted px-small">{p.games}{tt("P", "G")}</span> : null}
+                        {p.games && !hideResults ? <span className="muted px-small">{p.games}{tt("P", "G")}</span> : null}
                       </li>
                     ))}
                   </ul>
                 ) : (
                   <div className="px-small muted">{tt("Próximamente", "Coming soon")}</div>
                 )}
-                {games?.games ? (
+                {games?.games && !hideResults ? (
                   <div className="px-small muted move-foot">
                     {tt("Partidas", "Games")} {games.wins}-{games.games - games.wins}
                   </div>

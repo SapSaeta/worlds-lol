@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useLocale } from "@/components/LocaleProvider";
+import { RevealButton, SpoilerGate, useGate, useMatchSpoilers } from "@/components/SpoilerProvider";
 import { TeamLogo } from "@/components/TeamLogo";
 import type { StageInfo } from "@/config/tournament";
 import { byTime, isTbd, stageLayout, stageState, type Slot, type StageState, type SwissRecord } from "@/lib/bracket";
@@ -40,6 +41,7 @@ function useDates() {
 }
 
 type Dates = ReturnType<typeof useDates>;
+type Spoilers = ReturnType<typeof useMatchSpoilers>;
 
 export function TournamentMap({ map, info, teams }: { map: MapData; info: StageInfo[]; teams: Team[] }) {
   const dates = useDates();
@@ -57,6 +59,9 @@ export function TournamentMap({ map, info, teams }: { map: MapData; info: StageI
   const allDone = stages.every((s) => s.state === "done");
   const [sel, setSel] = useState(current);
   const [team, setTeam] = useState<string | null>(null);
+  const allMatches = useMemo(() => map.stages.flatMap((s) => s.matches), [map.stages]);
+  const spoilers = useMatchSpoilers(allMatches);
+  const records = useGate("balances");
 
   const pickable = useMemo(() => {
     const out = new Map<string, { code: string; name: string; image: string; rank: number }>();
@@ -83,7 +88,7 @@ export function TournamentMap({ map, info, teams }: { map: MapData; info: StageI
     <div className="tmap">
       <ol className="tm-route card" aria-label={t("Fases del torneo", "Tournament stages")}>
         {stages.map((s, i) => {
-          const plays = team ? s.matches.some((m) => m.teams.some((t) => t.code === team)) : false;
+          const plays = team ? s.matches.some((m) => !spoilers.hidesTeams(m) && m.teams.some((t) => t.code === team)) : false;
           return (
             <li key={s.slug}>
               <button type="button" className={`tm-town ${s.state}`} aria-pressed={i === sel} onClick={() => setSel(i)}>
@@ -121,10 +126,10 @@ export function TournamentMap({ map, info, teams }: { map: MapData; info: StageI
             </button>
           ))}
         </div>
-        {chosen ? <TeamPath code={chosen.code} name={chosen.name} stages={stages} dates={dates} onStage={setSel} /> : null}
+        {chosen ? <TeamPath code={chosen.code} name={chosen.name} stages={stages} dates={dates} spoilers={spoilers} onStage={setSel} /> : null}
       </div>
 
-      <div className={`tm-board ${stage.layout.kind}`} data-team={team ?? undefined}>
+      <div className={`tm-board ${stage.layout.kind} ${spoilers.guard}`} data-team={team ?? undefined}>
         {stage.layout.columns.map((col) => (
           <section key={col.title} className="tm-col">
             <h3 className="tm-col-title">
@@ -136,7 +141,7 @@ export function TournamentMap({ map, info, teams }: { map: MapData; info: StageI
                 <div key={g.title ?? gi} className="tm-group">
                   {g.title ? <div className="tm-group-title">{g.title}</div> : null}
                   {g.slots.map((slot) => (
-                    <MatchCard key={slot.match.id} slot={slot} team={team} dates={dates} onTeam={toggle} />
+                    <MatchCard key={slot.match.id} slot={slot} team={team} dates={dates} spoilers={spoilers} onTeam={toggle} />
                   ))}
                 </div>
               ))}
@@ -148,8 +153,18 @@ export function TournamentMap({ map, info, teams }: { map: MapData; info: StageI
           <section className="tm-col tm-out">
             <h3 className="tm-col-title">{t("Balance final", "Final records")}</h3>
             <div className="tm-col-body">
-              <RecordList title={t("A eliminatorias", "To knockouts")} list={stage.layout.qualified ?? []} total={8} cls="up" team={team} onTeam={toggle} />
-              <RecordList title={t("Eliminados", "Eliminated")} list={stage.layout.eliminated ?? []} total={8} cls="down" team={team} onTeam={toggle} />
+              {records.hidden ? (
+                <SpoilerGate
+                  text={t("Quién pasa y quién cae, oculto.", "Who advances and who is out, hidden.")}
+                  action={t("Ver balances", "Show records")}
+                  onShow={records.show}
+                />
+              ) : (
+                <>
+                  <RecordList title={t("A eliminatorias", "To knockouts")} list={stage.layout.qualified ?? []} total={8} cls="up" team={team} onTeam={toggle} />
+                  <RecordList title={t("Eliminados", "Eliminated")} list={stage.layout.eliminated ?? []} total={8} cls="down" team={team} onTeam={toggle} />
+                </>
+              )}
             </div>
           </section>
         ) : null}
@@ -164,12 +179,14 @@ export function TournamentMap({ map, info, teams }: { map: MapData; info: StageI
   );
 }
 
-function MatchCard({ slot, team, dates, onTeam }: { slot: Slot; team: string | null; dates: Dates; onTeam: (code: string) => void }) {
+function MatchCard({ slot, team, dates, spoilers, onTeam }: { slot: Slot; team: string | null; dates: Dates; spoilers: Spoilers; onTeam: (code: string) => void }) {
   const { t, href } = useLocale();
   const m = slot.match;
   const live = m.state === "inProgress";
-  const done = m.state === "completed";
-  const mine = !!team && m.teams.some((t) => t.code === team);
+  const hideTeams = spoilers.hidesTeams(m);
+  const hideScore = spoilers.hidesResult(m);
+  const done = m.state === "completed" && !hideScore;
+  const mine = !hideTeams && !!team && m.teams.some((t) => t.code === team);
   const cls = ["tm-match", live ? "live" : "", done ? "done" : "", mine ? "hl" : team ? "dim" : ""].filter(Boolean).join(" ");
   return (
     <article className={cls}>
@@ -184,6 +201,13 @@ function MatchCard({ slot, team, dates, onTeam }: { slot: Slot; team: string | n
         {live ? <span className="badge live">{t("Directo", "Live")}</span> : m.bestOf ? <span className="tm-bo">Bo{m.bestOf}</span> : null}
       </div>
       {m.teams.map((tm, i) => {
+        if (hideTeams)
+          return (
+            <div key={i} className="tm-row empty">
+              <span className="team-logo fallback tm-q">?</span>
+              <span className="tm-code">{t("Oculto", "Hidden")}</span>
+            </div>
+          );
         const tbd = isTbd(tm);
         const win = done && (tm.outcome === "win" || (tm.outcome == null && tm.gameWins > m.teams[1 - i].gameWins));
         return (
@@ -197,10 +221,13 @@ function MatchCard({ slot, team, dates, onTeam }: { slot: Slot; team: string | n
           >
             {tbd ? <span className="team-logo fallback tm-q">?</span> : <TeamLogo code={tm.code} image={tm.image} size={20} />}
             <span className="tm-code">{tbd ? (slot.hints?.[i] ?? t("Por decidir", "TBD")) : tm.code}</span>
-            <span className="tm-score">{done || live ? tm.gameWins : ""}</span>
+            <span className="tm-score">{hideScore ? "?" : done || live ? tm.gameWins : ""}</span>
           </button>
         );
       })}
+      {hideScore || hideTeams ? (
+        <RevealButton className="tm-reveal" onClick={() => spoilers.reveal(m.id)} label={hideScore ? undefined : t("Ver equipos", "Show teams")} />
+      ) : null}
       {live ? (
         <Link href={href("/")} className="tm-watch px-small">
           {t("Ver en directo ▸", "Watch live ▸")}
@@ -236,8 +263,11 @@ function RecordList({ title, list, total, cls, team, onTeam }: { title: string; 
 
 type StageView = { slug: string; name: string; matches: Match[] };
 
-function TeamPath({ code, name, stages, dates, onStage }: { code: string; name: string; stages: StageView[]; dates: Dates; onStage: (i: number) => void }) {
-  const path = stages.flatMap((s, i) => s.matches.filter((m) => m.teams.some((t) => t.code === code)).map((m) => ({ m, stage: s.name, i }))).sort((a, b) => byTime(a.m, b.m));
+function TeamPath({ code, name, stages, dates, spoilers, onStage }: { code: string; name: string; stages: StageView[]; dates: Dates; spoilers: Spoilers; onStage: (i: number) => void }) {
+  const all = stages.flatMap((s, i) => s.matches.filter((m) => m.teams.some((t) => t.code === code)).map((m) => ({ m, stage: s.name, i }))).sort((a, b) => byTime(a.m, b.m));
+  // Sin spoilers, el camino se corta en el primer cruce tapado.
+  const path = all.filter(({ m }) => !spoilers.hidesTeams(m));
+  const cut = path.length < all.length;
   // Un equipo sin partidos entra en la primera fase cuyo primer cruce aún está por sortear.
   const waiting = stages.find((s) => [...s.matches].sort(byTime)[0]?.teams.some(isTbd));
   const { t } = useLocale();
@@ -250,7 +280,7 @@ function TeamPath({ code, name, stages, dates, onStage }: { code: string; name: 
           {path.map(({ m, stage, i }) => {
             const me = m.teams.find((t) => t.code === code)!;
             const rival = m.teams.find((t) => t !== me)!;
-            const done = m.state === "completed";
+            const done = m.state === "completed" && !spoilers.hidesResult(m);
             const won = done && (me.outcome === "win" || (me.outcome == null && me.gameWins > rival.gameWins));
             return (
               <li key={m.id}>
@@ -263,11 +293,12 @@ function TeamPath({ code, name, stages, dates, onStage }: { code: string; name: 
                   </span>
                   {done ? <span className={`badge ${won ? "tm-w" : "tm-l"}`}>{won ? t("Victoria", "Win") : t("Derrota", "Loss")}</span> : m.state === "inProgress" ? <span className="badge live">{t("Directo", "Live")}</span> : null}
                 </button>
+                {spoilers.hidesResult(m) ? <RevealButton className="tm-path-reveal" onClick={() => spoilers.reveal(m.id)} /> : null}
               </li>
             );
           })}
         </ol>
-      ) : (
+      ) : cut ? null : (
         <p className="px-small muted">
           {t(
             `Aún sin rival asignado${draw ? `: su primer cruce sale del sorteo ${draw[0]}` : ""}.`,
@@ -275,6 +306,11 @@ function TeamPath({ code, name, stages, dates, onStage }: { code: string; name: 
           )}
         </p>
       )}
+      {cut ? (
+        <p className="px-small muted">
+          {t("Sus siguientes cruces están ocultos hasta que destapes los resultados anteriores.", "Their next matchups stay hidden until you reveal the earlier results.")}
+        </p>
+      ) : null}
     </div>
   );
 }

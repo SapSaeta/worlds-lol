@@ -3726,3 +3726,150 @@ button {
     font-size: 16px;
   }
 }
+
+/* ---------- Modo sin spoilers ---------- */
+
+/* Hasta que React lee la preferencia, los bloques con resultados no se pintan si el modo está activo */
+html[data-nospoil] .spoil-guard {
+  visibility: hidden;
+}
+
+/* Interruptor de la cabecera: casilla pixel que se enciende en amarillo */
+.spoiler-toggle {
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.spoiler-switch {
+  display: inline-block;
+  width: 22px;
+  height: 12px;
+  padding: 1px;
+  border: 2px solid var(--line);
+  background: var(--card-3);
+}
+
+.spoiler-switch i {
+  display: block;
+  width: 8px;
+  height: 6px;
+  background: var(--muted);
+}
+
+.spoiler-toggle[aria-pressed="true"] {
+  color: var(--sky);
+  background: var(--title);
+}
+
+.spoiler-toggle[aria-pressed="true"] .spoiler-switch {
+  background: var(--sky);
+}
+
+.spoiler-toggle[aria-pressed="true"] .spoiler-switch i {
+  margin-left: auto;
+  background: var(--hp);
+}
+
+/* Botón para destapar un partido o un bloque */
+.reveal-btn {
+  padding: 3px 6px;
+  font-family: var(--font-pixel);
+  font-size: 7px;
+  line-height: 1.4;
+  color: var(--sky);
+  background: var(--title);
+  border: 2px solid var(--line);
+  box-shadow: 2px 2px 0 var(--line);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.reveal-btn:hover {
+  background: #fff1a8;
+}
+
+.reveal-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: none;
+}
+
+.spoiler-gate {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  margin: 0 0 12px;
+  padding: 8px 10px;
+}
+
+.spoiler-gate p {
+  margin: 0;
+  color: var(--ink-2);
+  line-height: 1.6;
+}
+
+.team-table button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.tm-reveal {
+  align-self: flex-end;
+  margin-top: 4px;
+}
+
+.tm-path li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tm-path li > button:first-child {
+  flex: 1;
+}
+
+.tm-path .reveal-btn {
+  width: auto;
+  font-size: 7px;
+  padding: 3px 6px;
+}
+
+.next-popup-spoiler {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px 12px;
+  margin: 0 0 10px;
+}
+
+/* En móvil va en la fila del logo; el contador y el idioma bajan a la segunda */
+@media (max-width: 640px) {
+  .spoiler-toggle {
+    order: 1;
+    margin-left: auto;
+    gap: 4px;
+    padding: 4px 5px;
+    font-size: 7px;
+    white-space: normal;
+    text-align: left;
+  }
+
+  .spoiler-toggle .spoiler-label {
+    max-width: 56px;
+  }
+
+  .spoiler-toggle .spoiler-switch {
+    width: 16px;
+  }
+
+  .spoiler-toggle .spoiler-switch i {
+    width: 6px;
+  }
+
+  .site-header .status-chip,
+  .lang-switch {
+    order: 2;
+  }
+}

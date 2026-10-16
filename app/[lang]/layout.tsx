@@ -7,10 +7,12 @@ import "../globals.css";
 import { AuthorBadge } from "@/components/AuthorBadge";
 import { LocaleProvider } from "@/components/LocaleProvider";
 import { SiteHeader } from "@/components/SiteHeader";
+import { SpoilerProvider } from "@/components/SpoilerProvider";
 import { PlayerDock } from "@/components/player/PlayerDock";
 import { PlayerProvider } from "@/components/player/PlayerProvider";
 import { TOURNAMENT } from "@/config/tournament";
 import { LOCALES, alternates, isLocale, tr } from "@/lib/i18n";
+import { NOSPOIL_BOOT } from "@/lib/spoilers";
 
 export const dynamicParams = false;
 
@@ -42,14 +44,20 @@ export default async function RootLayout({ children, params }: LayoutProps<"/[la
   const { lang } = await params;
   if (!isLocale(lang)) notFound();
   return (
-    <html lang={lang}>
+    // El script marca <html> antes de pintar si el visitante tiene activado el modo sin spoilers.
+    <html lang={lang} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: NOSPOIL_BOOT }} />
+      </head>
       <body>
         <LocaleProvider locale={lang}>
-          <PlayerProvider>
-            <SiteHeader />
-            <main>{children}</main>
-            <PlayerDock />
-          </PlayerProvider>
+          <SpoilerProvider>
+            <PlayerProvider>
+              <SiteHeader />
+              <main>{children}</main>
+              <PlayerDock />
+            </PlayerProvider>
+          </SpoilerProvider>
           <footer className="site-footer">
             {lang === "en" ? (
               <>
