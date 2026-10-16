@@ -1671,7 +1671,50 @@ button {
   margin: 4px 0;
 }
 
+/* Firma del autor: fija abajo a la izquierda (el reproductor mini va a la derecha) */
+.author-badge {
+  position: fixed;
+  left: 20px;
+  bottom: 20px;
+  z-index: 25;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  font-family: var(--font-pixel);
+  font-size: 9px;
+  line-height: 1.4;
+  text-transform: uppercase;
+  color: var(--ink);
+  text-decoration: none;
+  background: var(--card);
+  border: var(--b) solid var(--line);
+  box-shadow: 4px 4px 0 0 var(--shadow);
+}
+
+.author-badge b {
+  color: var(--koi-dark);
+}
+
+.author-badge:hover {
+  background: #f2efe4;
+}
+
+.author-badge:active {
+  transform: translate(4px, 4px);
+  box-shadow: none;
+}
+
 /* ---------- Responsive ---------- */
+
+/* En pantallas estrechas la firma va dentro del pie para no chocar con el reproductor mini */
+@media (max-width: 760px) {
+  .author-badge {
+    position: static;
+    margin-bottom: 12px;
+    font-size: 8px;
+  }
+}
 
 @media (max-width: 1000px) {
   .live-layout {
