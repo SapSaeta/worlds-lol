@@ -3534,7 +3534,8 @@ button {
   place-items: center;
   width: 112px;
   height: 112px;
-  background: var(--card-2);
+  /* Azul medio: se leen tanto los escudos blancos (MVK, TSW) como los negros (FURIA) */
+  background: var(--slate);
   border: var(--b) solid var(--line);
   box-shadow: 4px 4px 0 0 var(--shadow);
 }
@@ -3547,6 +3548,8 @@ button {
 
 .next-popup-logo .team-logo.fallback {
   font-size: 14px;
+  color: #f9d97c;
+  background: transparent;
 }
 
 .next-popup-code {
