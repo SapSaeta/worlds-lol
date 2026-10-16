@@ -1,0 +1,208 @@
+<!doctype html>
+<!--
+  Ilustraciones de la portada del repositorio (README). Cada escena es un
+  elemento con id="<escena>" y el idioma sale de ?lang=es|en.
+  Para regenerar los PNG: node scripts/readme-art.mjs
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face { font-family: "PS2P"; src: url("../../assets/fonts/PressStart2P-Regular.ttf"); }
+  @font-face { font-family: "VT"; src: url("../../assets/fonts/VT323-Regular.ttf"); }
+  :root {
+    --sky: #081429; --sky-2: #102847; --koi: #4b9bec; --koi-dark: #2b66a8; --koi-light: #8cc2f7;
+    --card: #e7e4d9; --card-2: #dcd8ca; --card-3: #d0ccbd; --line: #2a2a2a; --ink: #1e1e1e; --ink-2: #4a4a44;
+    --title: #f8d860; --title-lo: #b89a30; --hp: #75fb67; --hp-mid: #f8d030; --hp-low: #f85838; --red: #e04848; --blue: #61a8f8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #000; font-family: "VT", monospace; color: var(--ink); -webkit-font-smoothing: none; }
+  .scene { position: relative; overflow: hidden; display: none; }
+  .scene.on { display: block; }
+  .px { font-family: "PS2P", monospace; }
+  img.pix { image-rendering: pixelated; display: block; }
+  .sky-bg { position: absolute; inset: 0; background: var(--sky) url("../../public/scene.svg") center bottom / cover no-repeat; image-rendering: pixelated; }
+  .gold { color: var(--title); text-shadow: 4px 4px 0 var(--title-lo), 8px 8px 0 #000; }
+  .card { background: var(--card); border: 4px solid var(--line); box-shadow: 8px 8px 0 var(--koi-dark); }
+  .chip { display: inline-block; border: 3px solid var(--line); background: var(--card); padding: 9px 14px 8px; font-family: "PS2P"; font-size: 13px; box-shadow: 4px 4px 0 var(--koi-dark); }
+  .chip.on { background: var(--koi); color: #fff; }
+  .bar { height: 14px; border: 3px solid #000; background: #222; position: relative; }
+  .bar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--hp); }
+  .bar.mid i { background: var(--hp-mid); } .bar.low i { background: var(--hp-low); }
+
+  /* ---------- Banner ---------- */
+  #banner { width: 1280px; height: 440px; }
+  #banner .sky-bg { background-position: center 72%; }
+  #banner .shade { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(8,20,41,.85) 0%, rgba(8,20,41,.35) 60%, rgba(8,20,41,0) 100%); }
+  #banner .logo { position: absolute; left: 70px; top: 70px; width: 280px; height: 280px; filter: drop-shadow(8px 8px 0 rgba(0,0,0,.6)); }
+  #banner .txt { position: absolute; left: 400px; top: 92px; right: 40px; }
+  #banner h1 { font-size: 66px; letter-spacing: 2px; }
+  #banner .sub { margin-top: 30px; font-size: 40px; color: #fff; line-height: 1; text-shadow: 3px 3px 0 #000; }
+  #banner .sub b { color: var(--koi-light); font-weight: normal; }
+  #banner .row { margin-top: 30px; display: flex; gap: 14px; }
+  #banner .url { position: absolute; left: 400px; top: 340px; }
+  #banner .url .chip { font-size: 16px; padding: 12px 18px 11px; }
+  #banner .url .chip::before { content: "▶ "; color: var(--red); }
+
+  /* ---------- Tarjetas de secciones ---------- */
+  .feat { width: 640px; height: 400px; background: var(--sky); }
+  .feat .sky-bg { opacity: .55; }
+  .feat .head { position: absolute; left: 24px; top: 22px; right: 24px; display: flex; align-items: center; gap: 14px; }
+  .feat .head .num { font-family: "PS2P"; font-size: 12px; color: var(--sky); background: var(--title); border: 3px solid #000; padding: 7px 8px 6px; }
+  .feat .head h2 { font-family: "PS2P"; font-size: 22px; font-weight: normal; }
+  .feat .body { position: absolute; left: 24px; right: 32px; top: 78px; bottom: 30px; }
+
+  /* Directo */
+  .player { position: absolute; left: 0; top: 0; width: 370px; height: 262px; padding: 10px; background: #2e2e2e; border: 4px solid var(--line); box-shadow: 8px 8px 0 var(--koi-dark); }
+  .player .screen { position: absolute; left: 10px; right: 10px; top: 10px; height: 178px; background: url("../../public/game/rift.svg") center / cover; image-rendering: pixelated; border: 3px solid #000; }
+  .player .live { position: absolute; left: 8px; top: 8px; font-family: "PS2P"; font-size: 10px; color: #fff; background: var(--red); padding: 5px 6px 4px; border: 2px solid #000; }
+  .player .ctrl { position: absolute; left: 10px; right: 10px; bottom: 10px; height: 52px; background: var(--card); border: 3px solid var(--line); display: flex; align-items: center; gap: 8px; padding: 0 10px; font-size: 22px; }
+  .tag { font-family: "PS2P"; font-size: 9px; padding: 4px 5px 3px; border: 2px solid #000; color: #000; }
+  .tag.ofi { background: var(--title); } .tag.es { background: var(--red); color: #fff; } .tag.co { background: var(--koi-light); }
+  .streams { position: absolute; left: 0; top: 280px; display: flex; gap: 8px; }
+  .streams span { font-family: "PS2P"; font-size: 9px; background: var(--card); border: 2px solid var(--line); padding: 5px 6px 4px; }
+  .table { position: absolute; right: 0; top: 0; width: 196px; padding: 10px; }
+  .table .t { font-family: "PS2P"; font-size: 11px; color: var(--ink-2); margin-bottom: 8px; }
+  .trow { display: flex; align-items: center; gap: 6px; background: var(--card-2); border: 2px solid var(--line); padding: 4px 6px; margin-bottom: 5px; font-size: 20px; line-height: 1; }
+  .trow b { font-weight: normal; width: 40px; } .trow .bar { flex: 1; height: 10px; border-width: 2px; }
+
+  /* Worlddex */
+  .dex { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .dexcard { padding: 10px 12px 12px; }
+  .dexcard .n { font-family: "PS2P"; font-size: 9px; color: var(--ink-2); }
+  .dexcard .crest { margin: 8px auto; width: 72px; height: 72px; border: 3px solid var(--line); display: grid; place-items: center; font-family: "PS2P"; font-size: 15px; color: #fff; }
+  .dexcard .name { font-family: "PS2P"; font-size: 11px; text-align: center; }
+  .dexcard .reg { text-align: center; font-size: 20px; color: var(--ink-2); }
+  .dexcard .stat { display: flex; align-items: center; gap: 6px; font-size: 17px; margin-top: 4px; }
+  .dexcard .stat span { width: 36px; } .dexcard .stat .bar { flex: 1; height: 10px; border-width: 2px; }
+  .tabs { position: absolute; left: 0; bottom: 0; display: flex; gap: 10px; }
+  .tabs .chip { font-size: 10px; padding: 7px 9px 6px; box-shadow: 3px 3px 0 var(--koi-dark); }
+
+  /* Mapa */
+  .route { position: absolute; inset: 0; }
+  .route svg { position: absolute; inset: 0; }
+  .stop { position: absolute; width: 176px; padding: 10px 12px; }
+  .stop .k { font-family: "PS2P"; font-size: 9px; color: var(--ink-2); }
+  .stop h3 { font-family: "PS2P"; font-weight: normal; font-size: 12px; margin: 8px 0 6px; }
+  .stop p { font-size: 20px; line-height: .95; }
+  .stop.final { background: var(--title); }
+  .pin { position: absolute; width: 22px; height: 22px; background: var(--red); border: 3px solid #000; box-shadow: 3px 3px 0 #000; }
+
+  /* Juego */
+  .arena { position: absolute; inset: 0; border: 4px solid var(--line); box-shadow: 8px 8px 0 var(--koi-dark); background: url("../../public/game/arena-jungla.svg") center / cover; image-rendering: pixelated; }
+  .hud { position: absolute; width: 250px; padding: 8px 12px 10px; }
+  .hud .nm { display: flex; justify-content: space-between; font-family: "PS2P"; font-size: 11px; }
+  .hud .nm small { font-family: "VT"; font-size: 20px; }
+  .hud .bar { margin-top: 6px; }
+  .hud .who { font-size: 18px; color: var(--ink-2); margin-top: 3px; }
+  .champ { position: absolute; font-family: "PS2P"; color: #fff; text-shadow: 3px 3px 0 #000; }
+  .moves { position: absolute; left: 12px; right: 12px; bottom: 12px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .moves div { background: var(--card); border: 3px solid var(--line); padding: 7px 8px 6px; font-size: 19px; line-height: 1; box-shadow: 3px 3px 0 #000; }
+  .moves div b { font-family: "PS2P"; font-weight: normal; font-size: 11px; display: block; margin-bottom: 4px; }
+  .moves div.ult { background: var(--title); }
+  .daily { position: absolute; right: 12px; top: 12px; font-family: "PS2P"; font-size: 10px; background: var(--red); color: #fff; border: 3px solid #000; padding: 7px 8px 6px; transform: rotate(3deg); }
+  .daily.second { top: 50px; right: 18px; background: var(--koi); transform: rotate(-2deg); }
+</style>
+</head>
+<body>
+
+<!-- Banner -->
+<section class="scene" id="banner">
+  <div class="sky-bg"></div>
+  <div class="shade"></div>
+  <img class="pix logo" src="../../public/logo.svg" alt="">
+  <div class="txt">
+    <h1 class="px gold">WORLDS·LOL</h1>
+    <p class="sub" data-es="Los <b>Worlds 2026</b> de LoL, en directo y en pixel." data-en="<b>LoL Worlds 2026</b>, live and in pixel art."></p>
+    <div class="row">
+      <span class="chip on" data-es="DIRECTO" data-en="LIVE"></span>
+      <span class="chip">WORLDDEX</span>
+      <span class="chip" data-es="MAPA" data-en="MAP"></span>
+      <span class="chip" data-es="JUGAR" data-en="PLAY"></span>
+    </div>
+  </div>
+  <div class="url"><span class="chip">worlddex.lol</span></div>
+</section>
+
+<!-- 1. Directo -->
+<section class="scene feat" id="directo">
+  <div class="sky-bg"></div>
+  <div class="head"><span class="num">01</span><h2 class="gold" data-es="Directo" data-en="Live"></h2></div>
+  <div class="body">
+    <div class="player">
+      <div class="screen"><span class="live" data-es="● EN DIRECTO" data-en="● LIVE"></span></div>
+      <div class="ctrl">LVP <span class="tag ofi" data-es="OFICIAL" data-en="OFFICIAL"></span><span class="tag es">ES</span><span style="color:#4a4a44" data-es="+ cooficiales" data-en="+ co-streams"></span></div>
+    </div>
+    <div class="streams"><span>LVP</span><span>LATAM</span><span>IBAI</span><span>JORDI LMK</span></div>
+    <div class="table card">
+      <p class="t" data-es="EQUIPOS" data-en="TEAMS"></p>
+      <div class="trow"><b>GEN</b><div class="bar"><i style="width:100%"></i></div></div>
+      <div class="trow"><b>BLG</b><div class="bar"><i style="width:84%"></i></div></div>
+      <div class="trow"><b>KOI</b><div class="bar"><i style="width:72%"></i></div></div>
+      <div class="trow"><b>T1</b><div class="bar mid"><i style="width:58%"></i></div></div>
+      <div class="trow"><b>G2</b><div class="bar mid"><i style="width:46%"></i></div></div>
+      <div class="trow"><b>HLE</b><div class="bar low"><i style="width:28%"></i></div></div>
+      <div class="trow"><b>FLY</b><div class="bar low"><i style="width:14%"></i></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- 2. Worlddex -->
+<section class="scene feat" id="worlddex">
+  <div class="sky-bg"></div>
+  <div class="head"><span class="num">02</span><h2 class="gold">¡Worlddex!</h2></div>
+  <div class="body">
+    <div class="dex">
+      <div class="card dexcard"><p class="n">#001</p><div class="crest" style="background:#e04848">T1</div><p class="name">T1</p><p class="reg">LCK</p>
+        <div class="stat"><span>KDA</span><div class="bar"><i style="width:82%"></i></div></div><div class="stat"><span>WR</span><div class="bar"><i style="width:70%"></i></div></div></div>
+      <div class="card dexcard"><p class="n">#007</p><div class="crest" style="background:#4b9bec">KOI</div><p class="name">MOVISTAR KOI</p><p class="reg">LEC</p>
+        <div class="stat"><span>KDA</span><div class="bar"><i style="width:66%"></i></div></div><div class="stat"><span>WR</span><div class="bar mid"><i style="width:55%"></i></div></div></div>
+      <div class="card dexcard"><p class="n">#012</p><div class="crest" style="background:#8a63c9">BLG</div><p class="name">BILIBILI</p><p class="reg">LPL</p>
+        <div class="stat"><span>KDA</span><div class="bar"><i style="width:74%"></i></div></div><div class="stat"><span>WR</span><div class="bar"><i style="width:68%"></i></div></div></div>
+    </div>
+    <div class="tabs"><span class="chip on" data-es="EQUIPOS" data-en="TEAMS"></span><span class="chip" data-es="JUGADORES" data-en="PLAYERS"></span><span class="chip" data-es="CAMPEONES" data-en="CHAMPIONS"></span><span class="chip" data-es="MAPA" data-en="MAP"></span></div>
+  </div>
+</section>
+
+<!-- 3. Mapa -->
+<section class="scene feat" id="mapa">
+  <div class="sky-bg"></div>
+  <div class="head"><span class="num">03</span><h2 class="gold" data-es="Mapa del Mundial" data-en="Worlds map"></h2></div>
+  <div class="body route">
+    <svg width="584" height="292" shape-rendering="crispEdges">
+      <path d="M176 52 H292 V96 M380 160 H492 V108" fill="none" stroke="#f8d860" stroke-width="6" stroke-dasharray="12 8"/>
+    </svg>
+    <div class="card stop" style="left:0;top:0"><p class="k">01 · BO5</p><h3>PLAY-IN</h3><p data-es="Los Ángeles<br>4 equipos, pasa 1" data-en="Los Angeles<br>4 teams, 1 advances"></p></div>
+    <div class="card stop" style="left:204px;top:96px"><p class="k">02 · BO1/BO3</p><h3 data-es="SUIZO" data-en="SWISS"></h3><p data-es="Allen (Texas)<br>3 victorias y pasas" data-en="Allen (Texas)<br>3 wins to advance"></p></div>
+    <div class="card stop final" style="left:404px;top:4px"><p class="k">03 · BO5</p><h3 data-es="FINAL" data-en="FINAL"></h3><p data-es="Nueva York<br>Barclays Center" data-en="New York<br>Barclays Center"></p></div>
+    <img class="pix" src="../../public/logo.svg" style="position:absolute;left:452px;top:178px;width:96px;height:96px;filter:drop-shadow(5px 5px 0 rgba(0,0,0,.6))" alt="">
+  </div>
+</section>
+
+<!-- 4. Juego -->
+<section class="scene feat" id="jugar">
+  <div class="sky-bg"></div>
+  <div class="head"><span class="num">04</span><h2 class="gold" data-es="Camino a la Copa" data-en="Road to the Cup"></h2></div>
+  <div class="body">
+    <div class="arena">
+      <span class="daily" data-es="RETO DEL DIA" data-en="DAILY CHALLENGE"></span>
+      <div class="card hud" style="left:12px;top:12px"><p class="nm">BARON NASHOR <small>Nv 18</small></p><div class="bar low"><i style="width:22%"></i></div></div>
+      <div class="card hud" style="right:12px;top:118px"><p class="nm">AHRI <small>Nv 16</small></p><div class="bar"><i style="width:76%"></i></div><p class="who" data-es="Entrenador: Faker" data-en="Coach: Faker"></p></div>
+      <div class="moves">
+        <div><b>Q</b><span data-es="Orbe" data-en="Orb"></span></div>
+        <div><b>W</b><span data-es="Fuego" data-en="Fire"></span></div>
+        <div><b>E</b><span data-es="Encanto" data-en="Charm"></span></div>
+        <div class="ult"><b>R</b><span data-es="Ímpetu" data-en="Rush"></span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  const lang = new URLSearchParams(location.search).get("lang") === "en" ? "en" : "es";
+  for (const el of document.querySelectorAll("[data-es]")) el.innerHTML = el.dataset[lang];
+  const scene = new URLSearchParams(location.search).get("scene");
+  for (const el of document.querySelectorAll(".scene")) if (!scene || el.id === scene) el.classList.add("on");
+</script>
+</body>
+</html>
