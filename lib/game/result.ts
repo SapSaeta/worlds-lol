@@ -16,7 +16,22 @@ export type SharedResult = {
   bosses: number;
   killer?: string;
   champs: { id: string; level: number }[];
+  /** Semilla de la partida: con ella otro puede jugar la misma */
+  seed?: number;
+  /** Número del reto del día, si lo era */
+  daily?: number;
 };
+
+/** Etiqueta corta de la cabecera de la tarjeta. */
+export const cardTitle = (r: Pick<SharedResult, "daily">) => (r.daily ? `RETO DEL DIA #${r.daily}` : "CAMINO A LA COPA");
+
+/** Enlace para jugar la misma partida que otro (mismo reto o misma semilla). */
+export function replayHref(r: Pick<SharedResult, "seed" | "daily">) {
+  if (!r.seed) return "/jugar";
+  const q = new URLSearchParams({ semilla: String(r.seed) });
+  if (r.daily) q.set("reto", String(r.daily));
+  return `/jugar?${q}`;
+}
 
 /** Formato 7.023: punto de miles también con cuatro cifras. */
 export const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
@@ -58,8 +73,13 @@ export function stageTrack(r: SharedResult) {
 export function shareText(r: SharedResult) {
   const head = r.champion ? "🏆 ¡CAMPEÓN DEL MUNDO! 🏆" : `${EMOJI[r.stage] ?? "💀"} ${resultLine(r).toUpperCase()}`;
   const what = r.champion ? "He ganado el Mundial sin perder ni un solo combate 😤" : `${resultSub(r)}.`;
-  const close = r.champion ? "Camino a la Copa: una sola vida y casi nadie lo consigue. ¿Te atreves? 👇" : "Camino a la Copa: una sola vida. ¿Llegas tú más lejos? 👇";
+  const close = r.daily
+    ? "Misma partida para todos hoy y una sola vida. ¿Me superas? 👇"
+    : r.champion
+      ? "Camino a la Copa: una sola vida y casi nadie lo consigue. ¿Te atreves? 👇"
+      : "Camino a la Copa: una sola vida. ¿Llegas tú más lejos? 👇";
   return [
+    ...(r.daily ? [`📅 Reto del día #${r.daily} · Camino a la Copa`] : []),
     head,
     "",
     what,
@@ -83,6 +103,8 @@ export function toQuery(r: SharedResult) {
   q.set("b", String(r.bosses));
   if (r.killer) q.set("k", r.killer);
   q.set("t", r.champs.map((c) => `${c.id}.${c.level}`).join(","));
+  if (r.seed) q.set("sd", String(r.seed));
+  if (r.daily) q.set("d", String(r.daily));
   return q.toString();
 }
 
@@ -120,5 +142,7 @@ export function fromQuery(q: URLSearchParams): SharedResult | null {
     bosses: int(q.get("b"), 99),
     killer: text(q.get("k"), 32) || undefined,
     champs,
+    seed: int(q.get("sd"), 2 ** 32 - 1) || undefined,
+    daily: int(q.get("d"), 9999) || undefined,
   };
 }

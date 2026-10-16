@@ -1849,6 +1849,18 @@ button {
   font-size: 12px;
 }
 
+.g-modes {
+  flex-direction: column;
+  align-items: center;
+}
+
+.g-mode-note {
+  margin: 0;
+  max-width: 420px;
+  text-align: center;
+  color: #cfe4ff;
+}
+
 .btn:disabled,
 .btn.off {
   opacity: 0.45;

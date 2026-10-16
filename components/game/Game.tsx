@@ -36,6 +36,7 @@ import {
   randomEvent,
   rivalTrainer,
   score,
+  seedRandom,
   shopStock,
   startBattle,
   trainerOptions,
@@ -45,7 +46,20 @@ import {
   type Run,
   type Unit,
 } from "@/lib/game/engine";
+import { dailyNumber, dailySeed, freshSeed } from "@/lib/game/daily";
 import type { GameData, GItem, GPlayer } from "@/lib/game/types";
+
+/** Partida con semilla: el reto del día o el reto que te pasa un amigo. */
+type Mode = { seed: number; daily?: number };
+
+/** Lee un reto del enlace (/jugar?semilla=…&reto=…). */
+function challengeFromUrl(): Mode | null {
+  const q = new URLSearchParams(location.search);
+  const seed = Math.floor(Number(q.get("semilla")));
+  if (!seed || seed < 1 || seed > 2 ** 32 - 1) return null;
+  const daily = Math.floor(Number(q.get("reto"))) || undefined;
+  return { seed, daily: daily && daily > 0 && daily < 10000 ? daily : undefined };
+}
 
 type Screen =
   | { s: "title" }
@@ -65,10 +79,19 @@ const fmt = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g
 export function Game({ data }: { data: GameData }) {
   const [screen, setScreen] = useState<Screen>({ s: "title" });
   const [run, setRun] = useState<Run | null>(null);
+  const [mode, setMode] = useState<Mode>({ seed: 0 });
+  const [today, setToday] = useState(0);
+  const [challenge, setChallenge] = useState<Mode | null>(null);
 
   useEffect(() => {
     window.scrollTo({ top: 0 });
   }, [screen.s]);
+
+  // Fecha y enlace solo en el navegador, para no desajustar el HTML del servidor.
+  useEffect(() => {
+    setToday(dailyNumber());
+    setChallenge(challengeFromUrl());
+  }, []);
 
   if (data.players.length < 3 || !Object.keys(data.champions).length) {
     return (
@@ -82,6 +105,16 @@ export function Game({ data }: { data: GameData }) {
   }
 
   const go = (s: Screen) => setScreen(s);
+
+  /** Empieza una partida: con semilla fija (reto) o con una nueva (libre). */
+  const start = (m: Mode) => {
+    seedRandom(m.seed);
+    setMode(m);
+    setRun(null);
+    go({ s: "trainer", options: trainerOptions(data), rerolls: 2 });
+  };
+  const daily = () => start({ seed: dailySeed(today || dailyNumber()), daily: today || dailyNumber() });
+  const free = () => start({ seed: freshSeed() });
 
   /* ---------- Inicio ---------- */
 
@@ -117,7 +150,7 @@ export function Game({ data }: { data: GameData }) {
                 trainer={t}
                 data={data}
                 onPick={() => {
-                  setRun(newRun(t, c, data));
+                  setRun(newRun(t, c, data, mode.seed, mode.daily));
                   go({ s: "map" });
                 }}
               />
@@ -144,11 +177,27 @@ export function Game({ data }: { data: GameData }) {
           equipos jefe. Solo tienes una vida: a la primera derrota, quedas eliminado.
           <span className="next">▼</span>
         </div>
-        <div className="g-actions-row">
-          <button type="button" className="btn g-start" onClick={() => go({ s: "trainer", options: trainerOptions(data), rerolls: 2 })}>
-            Empezar
-          </button>
-        </div>
+        {challenge ? (
+          <div className="g-actions-row g-modes">
+            <button type="button" className="btn g-start" onClick={() => start(challenge)}>
+              {challenge.daily ? `Jugar el reto #${challenge.daily}` : "Aceptar el reto"}
+            </button>
+            <p className="px-small g-mode-note">La misma partida que te han pasado: mismos entrenadores, mismo mapa. ¿Llegas más lejos?</p>
+            <button type="button" className="btn" onClick={free}>
+              Partida libre
+            </button>
+          </div>
+        ) : (
+          <div className="g-actions-row g-modes">
+            <button type="button" className="btn g-start" onClick={daily}>
+              Reto del día{today ? ` #${today}` : ""}
+            </button>
+            <p className="px-small g-mode-note">La misma partida para todos hoy. Compárate con tus amigos.</p>
+            <button type="button" className="btn" onClick={free}>
+              Partida libre
+            </button>
+          </div>
+        )}
       </div>
     );
   }
@@ -302,7 +351,8 @@ export function Game({ data }: { data: GameData }) {
         data={data}
         onAgain={() => {
           setRun(null);
-          go({ s: "trainer", options: trainerOptions(data), rerolls: 2 });
+          setChallenge(null);
+          go({ s: "title" });
         }}
       />
     );
@@ -609,6 +659,7 @@ function End({ run, data, onAgain }: { run: Run; data: GameData; onAgain: () => 
               {champion ? <li>Campeón del mundo: 5.000</li> : null}
             </ul>
           </div>
+          {run.daily ? <p className="px-small g-mode-note">Mañana hay reto nuevo. Pásale el enlace a un amigo: jugará tu misma partida.</p> : null}
           <div className="g-actions-row">
             <button type="button" className="btn" onClick={onAgain}>
               Jugar otra vez
