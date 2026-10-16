@@ -16,10 +16,10 @@ function LinkedInIcon() {
 
 export function AuthorBadge() {
   return (
-    <a className="author-badge" href={AUTHOR.linkedin} target="_blank" rel="noopener noreferrer" aria-label={`Desarrollada por ${AUTHOR.name}: LinkedIn`}>
+    <a className="author-badge" href={AUTHOR.linkedin} target="_blank" rel="noopener noreferrer" aria-label={`Desarrollado por ${AUTHOR.name}: LinkedIn`}>
       <LinkedInIcon />
       <span>
-        Desarrollada por <b>{AUTHOR.name}</b>
+        Desarrollado por <b>{AUTHOR.name}</b>
       </span>
     </a>
   );
