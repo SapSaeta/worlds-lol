@@ -3,6 +3,7 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { HpBar, ROLE_ORDER, RoleBadge, StatBars } from "@/components/Pixel";
 import { useLocale } from "@/components/LocaleProvider";
+import { RevealButton, SpoilerGate, useGate, useMatchSpoilers, useSpoilers } from "@/components/SpoilerProvider";
 import { TeamLogo } from "@/components/TeamLogo";
 import type { Match, Team, WorldsData } from "@/lib/types";
 
@@ -47,11 +48,14 @@ function useDates() {
   }, [mounted, intl]);
 }
 
-function TeamDex({ team, matches }: { team: Team; matches: Match[] }) {
+function TeamDex({ team, matches, showResults }: { team: Team; matches: Match[]; showResults: boolean }) {
+  const spoilers = useMatchSpoilers(matches);
   const next = matches.find((m) => m.state !== "completed" && m.teams.some((t) => t.code === team.code));
   const rival = next?.teams.find((t) => t.code !== team.code);
   const dates = useDates();
   const { t } = useLocale();
+  // Si el siguiente cruce está tapado, saber que lo juega ya es un spoiler.
+  const nextHidden = !!next && spoilers.hidesTeams(next);
   const players = [...team.players].sort((a, b) => ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role));
   const games = team.gameWins + team.gameLosses;
   return (
@@ -72,14 +76,16 @@ function TeamDex({ team, matches }: { team: Team; matches: Match[] }) {
           ) : null}
         </div>
       ) : null}
-      <StatBars
-        stats={[
-          { k: "Series", v: team.wins, max: Math.max(team.wins + team.losses, 1), text: `${team.wins}-${team.losses}` },
-          { k: t("Partidas", "Games"), v: team.gameWins, max: Math.max(games, 1), text: `${team.gameWins}-${team.gameLosses}` },
-          { k: "Win%", v: winrate(team) * 100, max: 100, text: `${Math.round(winrate(team) * 100)}%`, gold: true },
-        ]}
-      />
-      {next && rival ? (
+      {showResults ? (
+        <StatBars
+          stats={[
+            { k: "Series", v: team.wins, max: Math.max(team.wins + team.losses, 1), text: `${team.wins}-${team.losses}` },
+            { k: t("Partidas", "Games"), v: team.gameWins, max: Math.max(games, 1), text: `${team.gameWins}-${team.gameLosses}` },
+            { k: "Win%", v: winrate(team) * 100, max: 100, text: `${Math.round(winrate(team) * 100)}%`, gold: true },
+          ]}
+        />
+      ) : null}
+      {next && rival && !nextHidden ? (
         <div className="inset" style={{ padding: 8 }}>
           <div className="px-small muted">{t("Siguiente combate", "Next battle")}</div>
           <div className="bold" style={{ fontSize: 22, marginTop: 4 }}>
@@ -106,7 +112,10 @@ function TeamDex({ team, matches }: { team: Team; matches: Match[] }) {
 }
 
 function StandingsTab({ data }: { data: WorldsData }) {
-  const [sort, setSort] = useState<SortKey>("record");
+  const [chosen, setSort] = useState<SortKey>("record");
+  const gate = useGate("clasificacion");
+  // Con los resultados tapados, ordenar por victorias destriparía la tabla.
+  const sort: SortKey = gate.hidden && (chosen === "record" || chosen === "games") ? "gpr" : chosen;
   const [region, setRegion] = useState<string | null>(null);
   const [open, setOpen] = useState<string | null>(null);
   const { t } = useLocale();
@@ -123,7 +132,7 @@ function StandingsTab({ data }: { data: WorldsData }) {
   );
 
   const sortBtn = (key: SortKey, label: string) => (
-    <button data-active={sort === key} onClick={() => setSort(key)}>
+    <button data-active={sort === key} disabled={gate.hidden && (key === "record" || key === "games")} onClick={() => setSort(key)}>
       {label}
       {sort === key ? "▾" : ""}
     </button>
@@ -142,6 +151,13 @@ function StandingsTab({ data }: { data: WorldsData }) {
             </button>
           ))}
         </div>
+      ) : null}
+      {gate.hidden ? (
+        <SpoilerGate
+          text={t("Victorias, derrotas y forma ocultas. Equipos por ranking mundial.", "Wins, losses and form hidden. Teams sorted by world ranking.")}
+          action={t("Ver clasificación", "Show standings")}
+          onShow={gate.show}
+        />
       ) : null}
       <table className="team-table">
         <thead>
@@ -163,22 +179,33 @@ function StandingsTab({ data }: { data: WorldsData }) {
                     <span className="team-code bold">{t.code}</span>
                   </div>
                 </td>
-                <td className="record">
-                  <span className="w">{t.wins}</span>-<span className="l">{t.losses}</span>
-                </td>
-                <td style={{ width: 104 }}>
-                  <HpBar value={t.wins + t.losses ? winrate(t) : 1} />
-                  <div className="form">
-                    {t.form.slice(-5).map((f, j) => (
-                      <i key={j} className={f} title={f === "W" ? winLabel : lossLabel} />
-                    ))}
-                  </div>
-                </td>
+                {gate.hidden ? (
+                  <>
+                    <td className="record muted">?-?</td>
+                    <td style={{ width: 104 }} className="muted px-small">
+                      ???
+                    </td>
+                  </>
+                ) : (
+                  <>
+                    <td className="record">
+                      <span className="w">{t.wins}</span>-<span className="l">{t.losses}</span>
+                    </td>
+                    <td style={{ width: 104 }}>
+                      <HpBar value={t.wins + t.losses ? winrate(t) : 1} />
+                      <div className="form">
+                        {t.form.slice(-5).map((f, j) => (
+                          <i key={j} className={f} title={f === "W" ? winLabel : lossLabel} />
+                        ))}
+                      </div>
+                    </td>
+                  </>
+                )}
               </tr>
               {open === t.code ? (
                 <tr className="detail">
                   <td colSpan={4}>
-                    <TeamDex team={t} matches={data.matches} />
+                    <TeamDex team={t} matches={data.matches} showResults={!gate.hidden} />
                   </td>
                 </tr>
               ) : null}
@@ -194,6 +221,7 @@ function StandingsTab({ data }: { data: WorldsData }) {
 function MatchesTab({ data }: { data: WorldsData }) {
   const dates = useDates();
   const { t } = useLocale();
+  const spoilers = useMatchSpoilers(data.matches);
   // Partidos en juego, los próximos y los últimos resultados, agrupados por día.
   const live = data.matches.filter((m) => m.state === "inProgress");
   const upcoming = data.matches.filter((m) => m.state === "unstarted").slice(0, 12);
@@ -215,7 +243,7 @@ function MatchesTab({ data }: { data: WorldsData }) {
           return (
             <Fragment key={m.id}>
               {showDay && day ? <div className="muted" style={{ margin: "8px 0 6px", fontSize: 18 }}>{day}</div> : null}
-              <MatchRow m={m} dates={dates} />
+              <MatchRow m={m} dates={dates} spoilers={spoilers} />
             </Fragment>
           );
         })}
@@ -233,12 +261,16 @@ function MatchesTab({ data }: { data: WorldsData }) {
   );
 }
 
-function MatchRow({ m, dates }: { m: Match; dates: ReturnType<typeof useDates> }) {
+const HIDDEN_TEAM = { code: "?", image: "" };
+
+function MatchRow({ m, dates, spoilers }: { m: Match; dates: ReturnType<typeof useDates>; spoilers: ReturnType<typeof useMatchSpoilers> }) {
   const { t } = useLocale();
-  const [a, b] = m.teams;
-  const done = m.state === "completed";
-  const aLost = done && a.outcome === "loss";
-  const bLost = done && b.outcome === "loss";
+  const hideTeams = spoilers.hidesTeams(m);
+  const hideScore = spoilers.hidesResult(m);
+  const [a, b] = hideTeams ? [HIDDEN_TEAM, HIDDEN_TEAM] : m.teams;
+  const done = m.state === "completed" && !hideScore;
+  const aLost = done && m.teams[0].outcome === "loss";
+  const bLost = done && m.teams[1].outcome === "loss";
   return (
     <div className={`match ${m.state === "inProgress" ? "live" : ""}`}>
       <div className={`side ${aLost ? "loser" : ""}`}>
@@ -248,9 +280,11 @@ function MatchRow({ m, dates }: { m: Match; dates: ReturnType<typeof useDates> }
       <div className="score">
         {m.state === "unstarted" ? (
           <span className="px-small">{dates.time(m.startTime)}</span>
+        ) : hideScore ? (
+          <span className="muted">? - ?</span>
         ) : (
           <>
-            {a.gameWins} - {b.gameWins}
+            {m.teams[0].gameWins} - {m.teams[1].gameWins}
           </>
         )}
       </div>
@@ -260,6 +294,9 @@ function MatchRow({ m, dates }: { m: Match; dates: ReturnType<typeof useDates> }
       </div>
       <div className="meta px-small muted">
         <span>{m.blockName}</span>
+        {hideScore || hideTeams ? (
+          <RevealButton onClick={() => spoilers.reveal(m.id)} label={hideScore ? undefined : t("Ver equipos", "Show teams")} />
+        ) : null}
         <span>{m.state === "inProgress" ? <span style={{ color: "var(--red)" }}>{t("En vivo", "Live")}</span> : `Bo${m.bestOf}`}</span>
       </div>
     </div>
@@ -268,6 +305,7 @@ function MatchRow({ m, dates }: { m: Match; dates: ReturnType<typeof useDates> }
 
 export function TeamsPanel({ data, loading }: { data: WorldsData; loading: boolean }) {
   const [tab, setTab] = useState<"tabla" | "partidos">("tabla");
+  const { guard } = useSpoilers();
   const dates = useDates();
   const { t } = useLocale();
   const updated = dates.time(data.updatedAt);
@@ -284,7 +322,7 @@ export function TeamsPanel({ data, loading }: { data: WorldsData; loading: boole
           {t("Partidos", "Matches")}
         </button>
       </div>
-      <div className="side-body">
+      <div className={`side-body ${guard}`}>
         {data.source === "demo" ? (
           <div className="demo-banner px-small">{t("Datos de demostración: la API oficial no responde ahora mismo.", "Demo data: the official API is not responding right now.")}</div>
         ) : null}

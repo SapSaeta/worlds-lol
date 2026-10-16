@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useLocale } from "@/components/LocaleProvider";
+import { RevealButton, useMatchSpoilers } from "@/components/SpoilerProvider";
 import { TeamLogo } from "@/components/TeamLogo";
 import type { Match, MatchTeam } from "@/lib/types";
 
@@ -25,8 +26,9 @@ export function pickNextMatch(matches: Match[]): Match | null {
  * Aviso centrado sobre el reproductor cuando no hay partido en directo. La
  * hora se pinta en el navegador para usar su zona horaria.
  */
-export function NextMatchPopup({ match }: { match: Match }) {
+export function NextMatchPopup({ match, matches }: { match: Match; matches: Match[] }) {
   const { t, intl } = useLocale();
+  const spoilers = useMatchSpoilers(matches);
   const [now, setNow] = useState<number | null>(null);
   const [closedId, setClosedId] = useState<string | null>(null);
 
@@ -43,10 +45,11 @@ export function NextMatchPopup({ match }: { match: Match }) {
   const start = new Date(match.startTime);
   const [a, b] = match.teams;
   const day = dayFmt.format(start);
+  const hideTeams = spoilers.hidesTeams(match);
   const meta = [match.blockName, match.bestOf ? `Bo${match.bestOf}` : ""].filter(Boolean).join(" · ");
 
   return (
-    <div className="next-popup-wrap">
+    <div className={`next-popup-wrap ${spoilers.guard}`}>
       <div className="next-popup card" role="dialog" aria-label={t("Próximo partido", "Next match")}>
         <button className="dock-btn next-popup-close" onClick={() => setClosedId(match.id)} aria-label={t("Cerrar aviso", "Close notice")} title={t("Cerrar", "Close")}>
           ✕
@@ -54,12 +57,18 @@ export function NextMatchPopup({ match }: { match: Match }) {
         <p className="next-popup-kicker px-small">{t("Ahora no hay partido en directo", "No match live right now")}</p>
         <h2 className="next-popup-title">{t("Próximo partido", "Next match")}</h2>
         <div className="next-popup-teams">
-          <PopupTeam team={a} />
+          <PopupTeam team={hideTeams ? null : a} />
           <span className="next-popup-vs" aria-hidden>
             VS
           </span>
-          <PopupTeam team={b} />
+          <PopupTeam team={hideTeams ? null : b} />
         </div>
+        {hideTeams ? (
+          <p className="next-popup-spoiler">
+            <span className="px-small">{t("Equipos ocultos para no destripar resultados.", "Teams hidden so results stay unspoiled.")}</span>
+            <RevealButton onClick={() => spoilers.reveal(match.id)} label={t("Ver quién juega", "Show who plays")} />
+          </p>
+        ) : null}
         <p className="next-popup-when">
           <span className="next-popup-day">{day.charAt(0).toUpperCase() + day.slice(1)}</span>
           <span className="next-popup-hour">{hourFmt.format(start)}</span>
@@ -73,7 +82,18 @@ export function NextMatchPopup({ match }: { match: Match }) {
   );
 }
 
-function PopupTeam({ team }: { team: MatchTeam }) {
+function PopupTeam({ team }: { team: MatchTeam | null }) {
+  const { t } = useLocale();
+  if (!team)
+    return (
+      <div className="next-popup-team">
+        <div className="next-popup-logo">
+          <TeamLogo code="?" image="" size={88} />
+        </div>
+        <span className="next-popup-code">???</span>
+        <span className="next-popup-name">{t("Por destapar", "Hidden")}</span>
+      </div>
+    );
   return (
     <div className="next-popup-team">
       <div className="next-popup-logo">

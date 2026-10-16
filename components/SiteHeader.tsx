@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLocale } from "@/components/LocaleProvider";
 import { NextMatchChip } from "@/components/NextMatchChip";
+import { SpoilerToggle } from "@/components/SpoilerProvider";
 import { TOURNAMENT } from "@/config/tournament";
 import { LOCALE_COOKIE, switchPath, type Locale } from "@/lib/i18n";
 
@@ -56,6 +57,7 @@ export function SiteHeader() {
           </Link>
         ))}
       </nav>
+      <SpoilerToggle />
       <LangSwitch />
     </header>
   );

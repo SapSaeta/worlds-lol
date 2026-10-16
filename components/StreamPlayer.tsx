@@ -65,7 +65,7 @@ export function StreamPlayer({ liveStreams, matches }: { liveStreams: LiveStream
           <div className="label px-small">&nbsp;</div>
           <div className="player-screen" />
         </div>
-        {nextMatch ? <NextMatchPopup key={nextMatch.id} match={nextMatch} /> : null}
+        {nextMatch ? <NextMatchPopup key={nextMatch.id} match={nextMatch} matches={matches} /> : null}
       </div>
 
       <div className="player-bar card" ref={menuRef}>
