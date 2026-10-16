@@ -1686,22 +1686,42 @@ button {
   margin: 4px 0;
 }
 
-/* Firma del autor: una línea discreta al final del pie */
-.author-credit {
-  opacity: 0.75;
+/* Firma del autor: texto fijo en la esquina inferior izquierda (el reproductor mini va a la derecha) */
+.site-footer .author-credit {
+  position: fixed;
+  left: 20px;
+  bottom: 16px;
+  z-index: 25;
+  margin: 0;
+  font-family: var(--font-pixel);
+  font-size: 9px;
+  line-height: 1.4;
+  text-transform: uppercase;
+  color: var(--koi-light);
+  text-shadow: 2px 2px 0 #000;
 }
 
 .author-credit a {
-  color: inherit;
-  text-decoration: underline dotted;
-  text-underline-offset: 3px;
+  color: var(--title);
+  text-decoration: none;
+  border-bottom: 2px solid var(--title-lo);
 }
 
 .author-credit a:hover {
-  color: var(--title);
+  color: #fff;
+  border-bottom-color: #fff;
 }
 
 /* ---------- Responsive ---------- */
+
+/* En pantallas estrechas la firma va dentro del pie para no chocar con el reproductor mini */
+@media (max-width: 760px) {
+  .site-footer .author-credit {
+    position: static;
+    margin-top: 12px;
+    font-size: 8px;
+  }
+}
 
 @media (max-width: 1000px) {
   .live-layout {
