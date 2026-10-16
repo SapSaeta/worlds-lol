@@ -50,7 +50,6 @@ export default async function RootLayout({ children, params }: LayoutProps<"/[la
             <PlayerDock />
           </PlayerProvider>
           <footer className="site-footer">
-            <AuthorBadge locale={lang} />
             {lang === "en" ? (
               <>
                 <p>
@@ -68,6 +67,7 @@ export default async function RootLayout({ children, params }: LayoutProps<"/[la
                 <p>Web de fans sin ánimo de lucro. Datos y emisiones de lolesports.com.</p>
               </>
             )}
+            <AuthorBadge locale={lang} />
           </footer>
         </LocaleProvider>
       </body>
