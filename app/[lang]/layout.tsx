@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Analytics } from "@vercel/analytics/next";
 import { notFound } from "next/navigation";
 import "@fontsource/press-start-2p/400.css";
 import "@fontsource/vt323/400.css";
@@ -70,6 +71,7 @@ export default async function RootLayout({ children, params }: LayoutProps<"/[la
             <AuthorBadge locale={lang} />
           </footer>
         </LocaleProvider>
+        <Analytics />
       </body>
     </html>
   );
