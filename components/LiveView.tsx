@@ -34,7 +34,7 @@ export function LiveView({ initialData }: { initialData: WorldsData }) {
 
   return (
     <div className="live-layout">
-      <StreamPlayer liveStreams={data.liveStreams} />
+      <StreamPlayer liveStreams={data.liveStreams} matches={data.matches} />
       <TeamsPanel data={data} loading={loading} />
     </div>
   );

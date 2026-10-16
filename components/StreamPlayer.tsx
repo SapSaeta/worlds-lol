@@ -2,15 +2,16 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Stream } from "@/config/streams";
+import { NextMatchPopup, pickNextMatch } from "@/components/NextMatchPopup";
 import { usePlayer } from "@/components/player/PlayerProvider";
-import type { LiveStream } from "@/lib/types";
+import type { LiveStream, Match } from "@/lib/types";
 
 /**
  * Columna del reproductor en la portada. El iframe no está aquí sino en
  * PlayerDock (layout), que se coloca encima de este hueco; así sigue sonando
  * en miniatura al cambiar de pestaña.
  */
-export function StreamPlayer({ liveStreams }: { liveStreams: LiveStream[] }) {
+export function StreamPlayer({ liveStreams, matches }: { liveStreams: LiveStream[]; matches: Match[] }) {
   const { streams, current, liveChannels, choose, setLiveStreams, setSlot, isFullscreen, toggleFullscreen } = usePlayer();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -33,6 +34,8 @@ export function StreamPlayer({ liveStreams }: { liveStreams: LiveStream[] }) {
     };
   }, [menuOpen]);
 
+  const nextMatch = pickNextMatch(matches);
+
   function pick(id: string) {
     choose(id);
     setMenuOpen(false);
@@ -46,9 +49,12 @@ export function StreamPlayer({ liveStreams }: { liveStreams: LiveStream[] }) {
   return (
     <div className="player-col">
       {/* Hueco con la misma forma que el reproductor; PlayerDock se pinta encima. */}
-      <div ref={setSlot} className="player-frame player-slot card dark" aria-hidden="true">
-        <div className="label px-small">&nbsp;</div>
-        <div className="player-screen" />
+      <div className="player-stage">
+        <div ref={setSlot} className="player-frame player-slot card dark" aria-hidden="true">
+          <div className="label px-small">&nbsp;</div>
+          <div className="player-screen" />
+        </div>
+        {nextMatch ? <NextMatchPopup key={nextMatch.id} match={nextMatch} /> : null}
       </div>
 
       <div className="player-bar card" ref={menuRef}>
