@@ -6,7 +6,28 @@ import type { Cls, GameData, GChamp, GItem, GPlayer, GTeam, Role, Spell, SpellFx
 
 /* ---------- Azar ---------- */
 
-export const rand = () => Math.random();
+// Por defecto, Math.random. Con semilla (reto del día o reto de un amigo) el
+// azar se repite: misma semilla y mismas decisiones, misma partida.
+let rng: () => number = Math.random;
+
+/** mulberry32: generador pequeño y reproducible a partir de un entero. */
+function mulberry32(seed: number) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** Fija la semilla del azar del juego; sin semilla vuelve a Math.random. */
+export function seedRandom(seed?: number) {
+  rng = seed === undefined ? Math.random : mulberry32(seed);
+}
+
+export const rand = () => rng();
 export const pick = <T,>(xs: T[]): T => xs[Math.floor(rand() * xs.length)];
 export function shuffle<T>(xs: T[]): T[] {
   const a = [...xs];
@@ -454,9 +475,13 @@ export type Run = {
   /** Quién te eliminó, para el mensaje final */
   killer?: string;
   log: string[];
+  /** Semilla de la partida, para que otros jueguen la misma */
+  seed?: number;
+  /** Número del reto del día, si lo es */
+  daily?: number;
 };
 
-export function newRun(trainer: GPlayer, starter: string, data: GameData): Run {
+export function newRun(trainer: GPlayer, starter: string, data: GameData, seed?: number, daily?: number): Run {
   const bosses = pickBosses(data, trainer.team);
   return {
     trainer,
@@ -473,6 +498,8 @@ export function newRun(trainer: GPlayer, starter: string, data: GameData): Run {
     baron: false,
     elder: false,
     log: [],
+    seed,
+    daily,
   };
 }
 

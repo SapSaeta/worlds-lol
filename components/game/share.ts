@@ -28,6 +28,8 @@ export function toResult(run: Run): R.SharedResult {
     bosses: run.bosses,
     killer: run.killer,
     champs: run.team.map((u) => ({ id: u.champ, level: u.level })),
+    seed: run.seed,
+    daily: run.daily,
   };
 }
 
@@ -182,7 +184,7 @@ export async function drawCard(run: Run, data: GameData, format: CardFormat = "s
   ctx = layer.getContext("2d")!;
 
   let y = L.top;
-  text(ctx, "CAMINO A LA COPA", W / 2, y, L.title, "#8cc2f7", { align: "center", shadow: 4 });
+  fit(ctx, R.cardTitle(run), y, L.title, W - 120, run.daily ? "#f8d860" : "#8cc2f7", { shadow: 4 });
   y += L.afterTitle;
 
   // Titular con rayos detrás, y la copa si eres campeón

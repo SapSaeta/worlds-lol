@@ -6,7 +6,7 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { STAGES } from "@/lib/game/engine";
-import { fmt, fromQuery, resultLine, resultSub, stageStates, statsLine, toQuery } from "@/lib/game/result";
+import { fmt, fromQuery, replayHref, resultLine, resultSub, stageStates, statsLine, toQuery } from "@/lib/game/result";
 
 type Props = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -30,7 +30,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
     height: 630,
     alt: `${resultLine(r)} · ${fmt(r.score)} puntos`,
   };
-  const title = `${resultLine(r)} · Camino a la Copa`;
+  const title = `${r.daily ? `Reto #${r.daily} · ` : ""}${resultLine(r)} · Camino a la Copa`;
   const description = `${resultSub(r)}. ${fmt(r.score)} puntos con una sola vida. ¿Llegas tú más lejos?`;
   return {
     title,
@@ -76,9 +76,21 @@ export default async function Resultado({ searchParams }: Props) {
           <p className="px-small muted">
             {r.name} ({r.team}) · {fmt(r.score)} puntos · {statsLine(r)}
           </p>
-          <Link href="/jugar" className="btn g-share-main">
-            ¡Te toca! Juega ahora
-          </Link>
+          {r.seed ? (
+            <>
+              <Link href={replayHref(r)} className="btn g-share-main">
+                {r.daily ? `¡Juega el reto #${r.daily}!` : "¡Juega su misma partida!"}
+              </Link>
+              <p className="px-small muted">Mismos entrenadores y mismo mapa. ¿Llegas más lejos?</p>
+              <Link href="/jugar" className="btn">
+                Partida nueva
+              </Link>
+            </>
+          ) : (
+            <Link href="/jugar" className="btn g-share-main">
+              ¡Te toca! Juega ahora
+            </Link>
+          )}
         </div>
       </div>
     </div>

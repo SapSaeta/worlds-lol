@@ -5,7 +5,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { ImageResponse } from "next/og";
 import { championIcon, getChampions } from "@/lib/ddragon";
-import { STAGE_SHORT, fmt, fromQuery, resultLine, resultSub, stageStates, statsLine } from "@/lib/game/result";
+import { STAGE_SHORT, cardTitle, fmt, fromQuery, resultLine, resultSub, stageStates, statsLine } from "@/lib/game/result";
 
 const file = (p: string) => readFile(join(process.cwd(), p));
 const svgData = async (p: string) => `data:image/svg+xml;base64,${(await file(p)).toString("base64")}`;
@@ -89,11 +89,11 @@ export async function GET(req: Request) {
             display: "flex",
             fontFamily: "Press Start 2P",
             fontSize: 22,
-            color: "#8cc2f7",
+            color: r.daily ? "#f8d860" : "#8cc2f7",
             textShadow: "3px 3px 0 #1e1e1e",
           }}
         >
-          CAMINO A LA COPA
+          {cardTitle(r)}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
