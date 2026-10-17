@@ -507,8 +507,12 @@ export const DIFFICULTY = {
   bossMult: [1, 1.1, 1.25, 1.34, 1.28],
   monsterLevel: 2,
   dmgK: 4,
-  /** 2v2 de línea inferior: campeones de más en los rivales y vida de los monstruos */
-  duo: { rivalExtra: 1, bossExtra: 0, monsterHp: 1.7 },
+  /**
+   * 2v2 de línea inferior: un campeón más en los rivales, jefes algo más
+   * flojos por fase (dos contra dos castiga más) y más vida en los monstruos.
+   * Con 2.500 partidas: 2v2 gana un 5,3 % y 1v1 un 5,6 %; llegan a la final un 19 % y un 20 %.
+   */
+  duo: { rivalExtra: 1, bossExtra: 0, bossMult: [1, 0.97, 0.95, 0.88, 0.86], monsterHp: 1.5 },
 };
 
 export const stageLevel = (stage: number) => DIFFICULTY.stageLevel[stage] ?? DIFFICULTY.stageLevel.at(-1)!;
@@ -751,7 +755,7 @@ export function bossTeam(run: Run, data: GameData): Side & { teamData: GTeam } {
     units: shuffle(players)
       .slice(0, (DIFFICULTY.bossSize[run.stage] ?? 5) + (isDuo(run) ? DIFFICULTY.duo.bossExtra : 0))
       .map((p) => newUnit(pick(p.pool.slice(0, 3)), Math.min(MAX_LEVEL, stageLevel(run.stage) + (DIFFICULTY.bossLevel[run.stage] ?? 3)), data)),
-    mult: DIFFICULTY.bossMult[run.stage] ?? 1,
+    mult: (DIFFICULTY.bossMult[run.stage] ?? 1) * (isDuo(run) ? (DIFFICULTY.duo.bossMult[run.stage] ?? 1) : 1),
     skill: 0.85,
   };
 }
