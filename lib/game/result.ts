@@ -77,7 +77,8 @@ export function resultSub(r: SharedResult, l: Locale = "es") {
   if (r.champion) return tr(l, `Sin perder ni un combate, con ${r.name} (${r.team})`, `Without losing a single battle, with ${r.name} (${r.team})`);
   const where = WHERE[l][r.stage] ?? "";
   if (l === "en") return r.killer ? `${r.killer} knocked me out ${where}` : `Knocked out ${where}`;
-  return r.killer ? `${r.killer} me eliminó ${where}` : `Eliminado ${where}`;
+  // Una pareja de línea inferior ("Ruler & Duro") te elimina en plural.
+  return r.killer ? `${r.killer} ${r.killer.includes(" & ") ? "me eliminaron" : "me eliminó"} ${where}` : `Eliminado ${where}`;
 }
 
 /** Hasta dónde llegaste, fase a fase: ganada, perdida o sin jugar. */

@@ -18,7 +18,7 @@ const plain = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").
 
 export function toResult(run: Run): R.SharedResult {
   return {
-    name: run.trainer.name,
+    name: run.partner ? `${run.trainer.name} & ${run.partner.name}` : run.trainer.name,
     team: run.trainer.team,
     stage: run.stage,
     champion: run.over === "champion",

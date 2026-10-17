@@ -3873,3 +3873,112 @@ html[data-nospoil] .spoil-guard {
     order: 2;
   }
 }
+
+/* ---------- Combate 2v2 (línea inferior) ---------- */
+
+.g-infos {
+  flex: 0 1 300px;
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.g-sprites {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.g-field.duo .g-sprite {
+  padding: 6px 6px 14px;
+}
+
+.g-field.duo .g-plat {
+  width: 136px;
+  height: 36px;
+}
+
+.g-field.duo .g-info {
+  padding: 5px 8px;
+  gap: 2px;
+}
+
+.g-field.duo .g-info-name {
+  font-size: 19px;
+}
+
+.g-field.duo .g-info-tags {
+  min-height: 18px;
+}
+
+/* El campeón al que le toca recibir orden */
+.g-info.turn {
+  outline: 3px solid var(--title);
+  outline-offset: 1px;
+}
+
+.g-sprite.turn .g-plat {
+  box-shadow: 0 0 0 3px var(--title);
+}
+
+.g-duo-tag {
+  padding: 1px 6px;
+  border: 2px solid var(--line);
+  background: var(--title);
+  color: #2a2a2a;
+}
+
+.g-order-title {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.g-move.peel:not(:disabled) {
+  background: #e4eefa;
+}
+
+.g-status.s-peel {
+  background: #4a90d8;
+  color: #fff;
+}
+
+@media (max-width: 760px) {
+  .g-field.duo .g-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+  }
+
+  .g-field.duo .g-row.foe .g-sprites {
+    order: -1;
+  }
+
+  .g-field.duo .g-infos {
+    flex: none;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .g-field.duo .g-info-name {
+    font-size: 16px;
+  }
+
+  .g-field.duo .g-portrait,
+  .g-field.duo .g-portrait .pixel-img {
+    width: 64px !important;
+    height: 64px !important;
+  }
+
+  .g-field.duo .g-portrait.monster,
+  .g-field.duo .g-portrait.monster .pixel-img {
+    width: 88px !important;
+    height: 88px !important;
+  }
+
+  .g-field.duo .g-plat {
+    width: 100px;
+    height: 28px;
+  }
+}
