@@ -34,6 +34,10 @@ const ICONS: Record<string, { grid: string[]; colors: Record<string, string> }> 
     grid: ["........", "y..y..y.", "yy.yy.yy", "yyyyyyyy", "yryyyryy", "yyyyyyyy", "yyyyyyyy", "........"],
     colors: { y: "#f8d860", r: "#e04848" },
   },
+  shield: {
+    grid: [".xxxxxx.", "xbbwbbbx", "xbwbbbbx", "xbbbbbbx", "xbbbbbbx", ".xbbbbx.", "..xbbx..", "...xx..."],
+    colors: { x: "#2a2a2a", b: "#4a90d8", w: "#e8f0ff" },
+  },
 };
 
 export function PixelIcon({ name, size = 24 }: { name: keyof typeof ICONS | string; size?: number }) {

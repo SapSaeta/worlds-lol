@@ -28,12 +28,14 @@ import {
   derive,
   finishBattle,
   healAll,
+  laneMate,
   monsterSide,
   moveNote,
   movesOf,
   newRun,
   nextStage,
   playTurn,
+  poolChoices,
   randomEvent,
   rivalTrainer,
   score,
@@ -68,6 +70,7 @@ type Screen =
   | { s: "title" }
   | { s: "trainer"; options: GPlayer[]; rerolls: number }
   | { s: "starter"; trainer: GPlayer }
+  | { s: "partner"; trainer: GPlayer; mate: GPlayer; starter: string }
   | { s: "map" }
   | { s: "battle"; battle: Battle }
   | { s: "reward"; battle: Battle; gold: number; levels: number; reward?: string }
@@ -153,18 +156,53 @@ export function Game({ data }: { data: GameData }) {
           <h1 className="screen-title">{t(`¿Con quién empieza ${tr.name}?`, `Who does ${tr.name} start with?`)}</h1>
           <p className="screen-subtitle">{t("Tres campeones de su pool. El resto se ficha por el camino", "Three champions from their pool. You recruit the rest along the way")}</p>
           <div className="g-starters">
-            {tr.pool.slice(0, 3).map((c) => (
+            {poolChoices(tr, data).map((c) => (
               <StarterCard
                 key={c}
                 id={c}
                 trainer={tr}
                 data={data}
                 onPick={() => {
+                  // ADC y support eligen también el campeón de su pareja de línea.
+                  const mate = laneMate(tr, data);
+                  if (mate) return go({ s: "partner", trainer: tr, mate, starter: c });
                   setRun(newRun(tr, c, data, mode.seed, mode.daily));
                   go({ s: "map" });
                 }}
               />
             ))}
+          </div>
+        </div>
+      );
+    }
+    if (screen.s === "partner") {
+      const { trainer: tr, mate, starter } = screen;
+      const first = data.champions[starter];
+      return (
+        <div className="g-wrap">
+          <h1 className="screen-title">{t(`¿Con qué va ${mate.name}?`, `What does ${mate.name} play?`)}</h1>
+          <p className="screen-subtitle">
+            {t(
+              `${tr.name} juega en línea inferior: 2v2 junto a ${mate.name}, su ${ROLE_LABEL[mate.role]}. Elige su campeón para acompañar a ${first.name}`,
+              `${tr.name} plays bot lane: 2v2 with ${mate.name}, their ${ROLE_LABEL[mate.role]}. Pick their champion to go with ${first.name}`,
+            )}
+          </p>
+          <div className="g-starters">
+            {poolChoices(mate, data, 4)
+              .filter((c) => c !== starter)
+              .slice(0, 3)
+              .map((c) => (
+                <StarterCard
+                  key={c}
+                  id={c}
+                  trainer={tr}
+                  data={data}
+                  onPick={() => {
+                    setRun(newRun(tr, starter, data, mode.seed, mode.daily, c));
+                    go({ s: "map" });
+                  }}
+                />
+              ))}
           </div>
         </div>
       );
@@ -183,8 +221,8 @@ export function Game({ data }: { data: GameData }) {
         </div>
         <div className="dialog card">
           {t(
-            "Elige a un jugador de los Worlds como entrenador y empieza con un campeón de su pool. Recorre la Grieta desde el Play-In hasta la final de Nueva York: combate, ficha campeones rivales, compra objetos, caza dragones y vence a los equipos jefe. Solo tienes una vida: a la primera derrota, quedas eliminado.",
-            "Pick a Worlds player as your trainer and start with a champion from their pool. Cross the Rift from the Play-In to the New York final: battle, recruit enemy champions, buy items, hunt dragons and beat the boss teams. You only have one life: lose once and you're out.",
+            "Elige a un jugador de los Worlds como entrenador y empieza con un campeón de su pool. Recorre la Grieta desde el Play-In hasta la final de Nueva York: combate, ficha campeones rivales, compra objetos, caza dragones y vence a los equipos jefe. Si eliges un ADC o un support, combates 2v2 junto a su pareja de línea. Solo tienes una vida: a la primera derrota, quedas eliminado.",
+            "Pick a Worlds player as your trainer and start with a champion from their pool. Cross the Rift from the Play-In to the New York final: battle, recruit enemy champions, buy items, hunt dragons and beat the boss teams. Pick an ADC or a support and you battle 2v2 alongside their lane partner. You only have one life: lose once and you're out.",
           )}
           <span className="next">▼</span>
         </div>
@@ -394,9 +432,11 @@ function Hud({ run, data }: { run: Run; data: GameData }) {
         {t.image ? <PixelImg src={t.image} alt={t.name} size={40} res={24} /> : <TeamLogo code={t.team} image={team?.image ?? ""} size={40} />}
         <div>
           <div className="bold">
-            {t.name} <span className="muted">{t.team}</span>
+            {t.name}
+            {run.partner ? ` & ${run.partner.name}` : ""} <span className="muted">{t.team}</span>
           </div>
           <span className={`role ${t.role}`}>{ROLE_LABEL[t.role]}</span>
+          {run.partner ? <span className={`role ${run.partner.role}`}>{ROLE_LABEL[run.partner.role]}</span> : null}
         </div>
       </div>
       <div className="g-hud-stats px-small">
@@ -420,6 +460,8 @@ function Hud({ run, data }: { run: Run; data: GameData }) {
 
 function TrainerCard({ p, data, onPick }: { p: GPlayer; data: GameData; onPick: () => void }) {
   const team = data.teams.find((t) => t.code === p.team);
+  const mate = laneMate(p, data);
+  const { t } = useLocale();
   return (
     <button type="button" className="g-trainer card" onClick={onPick}>
       <span className="g-trainer-photo">{p.image ? <PixelImg src={p.image} alt={p.name} size={96} res={32} /> : <TeamLogo code={p.team} image={team?.image ?? ""} size={72} />}</span>
@@ -429,6 +471,7 @@ function TrainerCard({ p, data, onPick }: { p: GPlayer; data: GameData; onPick: 
       </span>
       <span className={`role ${p.role}`}>{ROLE_LABEL[p.role]}</span>
       <span className="g-perk">{ROLE_PERK[p.role]}</span>
+      {mate ? <span className="g-perk g-duo-perk">{t(`Combates 2v2 junto a ${mate.name}.`, `2v2 battles alongside ${mate.name}.`)}</span> : null}
       <span className="g-pool">
         {p.pool.slice(0, 6).map((c) => (data.champions[c] ? <ChampSprite key={c} champ={data.champions[c]} size={30} /> : null))}
       </span>

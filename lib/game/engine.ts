@@ -168,8 +168,8 @@ export function unitStats(u: Unit, data: GameData, role?: Role) {
 
 /* ---------- Habilidades ---------- */
 
-/** Q, W, E, R y el ataque básico (A). */
-export type MoveKey = SpellKey | "A";
+/** Q, W, E, R, el ataque básico (A) y "Proteger" (P, solo en 2v2). */
+export type MoveKey = SpellKey | "A" | "P";
 
 export type Move = {
   key: MoveKey;
@@ -185,6 +185,8 @@ export type Move = {
   fx: SpellFx[];
   /** Puede ser crítico (ataques básicos y golpes potenciados) */
   crit: boolean;
+  /** Golpea a todos los rivales en el campo (2v2) */
+  area?: boolean;
 };
 
 export const FX_LABEL: Record<SpellFx, string> = localized(
@@ -202,6 +204,7 @@ export const FX_LABEL: Record<SpellFx, string> = localized(
     execute: "Remata",
     multi: "Varios golpes",
     evade: "Esquiva",
+    peel: "Protege al compañero",
   },
   {
     stun: "Stuns",
@@ -217,6 +220,7 @@ export const FX_LABEL: Record<SpellFx, string> = localized(
     execute: "Executes",
     multi: "Multi-hit",
     evade: "Dodges",
+    peel: "Covers your partner",
   },
 );
 
@@ -429,21 +433,21 @@ function monsterMoves(c: GChamp): Move[] {
   const [, id, el] = c.id.split("-") as [string, MonsterId, Drake | undefined];
   if (id === "baron")
     return [
-      mv("Q", T("Ácido corrosivo", "Corrosive Acid"), 85, "magic"),
+      mv("Q", T("Ácido corrosivo", "Corrosive Acid"), 85, "magic", { area: true }),
       mv("W", T("Tentáculos del Vacío", "Void Tentacles"), 55, "magic", { fx: ["stun"], cooldown: 3 }),
       mv("E", T("Golpe del Barón", "Baron Slam"), 70, "phys"),
     ];
   const claw = T("Zarpazo", "Claw");
-  if (id === "herald") return [mv("Q", T("Embestida", "Charge"), 70, "phys", { fx: ["stun"], cooldown: 3 }), mv("W", T("Mirada del Heraldo", "Herald's Gaze"), 60, "magic"), mv("E", claw, 55, "phys")];
-  if (id === "elder") return [mv("Q", T("Aliento ancestral", "Elder Breath"), 85, "true"), mv("W", claw, 65, "phys"), mv("E", T("Rugido", "Roar"), 35, "magic", { fx: ["slow"], cooldown: 2 })];
+  if (id === "herald") return [mv("Q", T("Embestida", "Charge"), 70, "phys", { fx: ["stun"], cooldown: 3 }), mv("W", T("Mirada del Heraldo", "Herald's Gaze"), 60, "magic", { area: true }), mv("E", claw, 55, "phys")];
+  if (id === "elder") return [mv("Q", T("Aliento ancestral", "Elder Breath"), 85, "true", { area: true }), mv("W", claw, 65, "phys"), mv("E", T("Rugido", "Roar"), 35, "magic", { fx: ["slow"], cooldown: 2 })];
   const d = DRAKES[el ?? "fire"];
   const special: Record<Drake, Move> = {
-    fire: mv("Q", d.breath, 85, "magic"),
-    water: mv("Q", d.breath, 70, "magic", { fx: ["drain"] }),
+    fire: mv("Q", d.breath, 85, "magic", { area: true }),
+    water: mv("Q", d.breath, 70, "magic", { fx: ["drain"], area: true }),
     earth: mv("Q", d.breath, 70, "phys", { fx: ["stun"], cooldown: 3 }),
     air: mv("Q", d.breath, 70, "magic", { fx: ["haste"], priority: true }),
-    hextech: mv("Q", d.breath, 60, "magic", { fx: ["multi"], hits: 2 }),
-    chemtech: mv("Q", d.breath, 65, "magic", { fx: ["slow"], cooldown: 1 }),
+    hextech: mv("Q", d.breath, 60, "magic", { fx: ["multi"], hits: 2, area: true }),
+    chemtech: mv("Q", d.breath, 65, "magic", { fx: ["slow"], cooldown: 1, area: true }),
   };
   return [special[el ?? "fire"], mv("W", claw, 60, "phys"), mv("E", T("Aleteo", "Wing Gust"), 40, "magic", { fx: ["slow"], cooldown: 2 })];
 }
@@ -503,6 +507,12 @@ export const DIFFICULTY = {
   bossMult: [1, 1.1, 1.25, 1.34, 1.28],
   monsterLevel: 2,
   dmgK: 4,
+  /**
+   * 2v2 de línea inferior: un campeón más en los rivales, jefes algo más
+   * flojos por fase (dos contra dos castiga más) y más vida en los monstruos.
+   * Con 2.500 partidas: 2v2 gana un 5,3 % y 1v1 un 5,6 %; llegan a la final un 19 % y un 20 %.
+   */
+  duo: { rivalExtra: 1, bossExtra: 0, bossMult: [1, 0.97, 0.95, 0.88, 0.86], monsterHp: 1.5 },
 };
 
 export const stageLevel = (stage: number) => DIFFICULTY.stageLevel[stage] ?? DIFFICULTY.stageLevel.at(-1)!;
@@ -583,6 +593,8 @@ function pickBosses(data: GameData, own: string): string[] {
 
 export type Run = {
   trainer: GPlayer;
+  /** Pareja de línea (support si eres ADC y al revés): con ella se juega 2v2 */
+  partner?: GPlayer;
   team: Unit[];
   gold: number;
   stage: number;
@@ -607,11 +619,29 @@ export type Run = {
   daily?: number;
 };
 
-export function newRun(trainer: GPlayer, starter: string, data: GameData, seed?: number, daily?: number): Run {
+/** ADC y support juegan en pareja (2v2); el resto, 1v1. */
+export const isDuoRole = (r: Role) => r === "bottom" || r === "support";
+export const isDuo = (run: Run) => !!run.partner;
+
+/** Compañero de línea inferior de un jugador: el support de su equipo si es ADC, y al revés. */
+export function laneMate(p: GPlayer, data: GameData): GPlayer | undefined {
+  if (!isDuoRole(p.role)) return undefined;
+  const want: Role = p.role === "bottom" ? "support" : "bottom";
+  const starters = data.teams.find((t) => t.code === p.team)?.players ?? [];
+  const mates = data.players.filter((x) => x.team === p.team && x.role === want && x.pool.some((c) => data.champions[c]));
+  return mates.find((x) => starters.includes(x.id)) ?? mates[0];
+}
+
+/** Campeones de la pool de un jugador con datos, para elegir al empezar. */
+export const poolChoices = (p: GPlayer, data: GameData, n = 3) => p.pool.filter((c) => data.champions[c]).slice(0, n);
+
+export function newRun(trainer: GPlayer, starter: string, data: GameData, seed?: number, daily?: number, mateChamp?: string): Run {
   const bosses = pickBosses(data, trainer.team);
+  const partner = mateChamp ? laneMate(trainer, data) : undefined;
   return {
     trainer,
-    team: [newUnit(starter, DIFFICULTY.startLevel, data, trainer.role)],
+    partner,
+    team: [starter, ...(partner && mateChamp ? [mateChamp] : [])].map((c) => newUnit(c, DIFFICULTY.startLevel, data, trainer.role)),
     gold: 500,
     stage: 0,
     row: -1,
@@ -669,6 +699,8 @@ export function teamBonus(run: Run) {
 
 export type Side = {
   name: string;
+  /** Pareja de línea del rival en 2v2 (su nombre ya va en name) */
+  mate?: string;
   /** Equipo (código) o monstruo */
   team?: string;
   image?: string;
@@ -680,14 +712,28 @@ export type Side = {
 };
 
 export function rivalTrainer(run: Run, data: GameData): Side {
+  const duo = isDuo(run);
   const pool = data.players.filter((p) => p.team !== run.trainer.team && p.pool.length);
-  const p = pick(pool);
-  const n = DIFFICULTY.rivalSize[run.stage] ?? 3;
-  const champs = shuffle(p.pool.slice(0, 6)).slice(0, n);
+  // En 2v2, otra pareja de línea inferior.
+  const bots = duo ? pool.filter((p) => p.role === "bottom" && laneMate(p, data)) : [];
+  const p = pick(bots.length ? bots : pool);
+  const mate = duo ? laneMate(p, data) : undefined;
+  const n = (DIFFICULTY.rivalSize[run.stage] ?? 3) + (duo ? DIFFICULTY.duo.rivalExtra : 0);
+  let champs = shuffle(p.pool.slice(0, 6)).slice(0, n);
+  if (mate) {
+    // Alternan los de cada uno: el primero de cada pool sale al campo.
+    const a = shuffle(p.pool.filter((c) => data.champions[c]).slice(0, 6));
+    const s = shuffle(mate.pool.filter((c) => data.champions[c] && !a.includes(c)).slice(0, 6));
+    champs = Array.from({ length: Math.max(a.length, s.length) }, (_, i) => [a[i], s[i]])
+      .flat()
+      .filter((c): c is string => !!c)
+      .slice(0, n);
+  }
   // Más fuerte cuanto más cerca del jefe.
   const lvl = stageLevel(run.stage) + Math.max(0, run.row - 1);
   return {
-    name: p.name,
+    name: mate ? `${p.name} & ${mate.name}` : p.name,
+    mate: mate?.name,
     team: p.team,
     image: p.image,
     units: champs.map((c) => newUnit(c, Math.max(1, lvl), data)),
@@ -707,15 +753,17 @@ export function bossTeam(run: Run, data: GameData): Side & { teamData: GTeam } {
     image: team.image,
     teamData: team,
     units: shuffle(players)
-      .slice(0, DIFFICULTY.bossSize[run.stage] ?? 5)
+      .slice(0, (DIFFICULTY.bossSize[run.stage] ?? 5) + (isDuo(run) ? DIFFICULTY.duo.bossExtra : 0))
       .map((p) => newUnit(pick(p.pool.slice(0, 3)), Math.min(MAX_LEVEL, stageLevel(run.stage) + (DIFFICULTY.bossLevel[run.stage] ?? 3)), data)),
-    mult: DIFFICULTY.bossMult[run.stage] ?? 1,
+    mult: (DIFFICULTY.bossMult[run.stage] ?? 1) * (isDuo(run) ? (DIFFICULTY.duo.bossMult[run.stage] ?? 1) : 1),
     skill: 0.85,
   };
 }
 
 export function monsterSide(id: MonsterId, run: Run, data: GameData, drake?: Drake): Side {
   const c = monsterChamp(id, run.stage, drake);
+  // En 2v2 se enfrenta a dos campeones a la vez: más vida.
+  if (isDuo(run)) c.base.hp = Math.round(c.base.hp * DIFFICULTY.duo.monsterHp);
   const unit: Unit = { uid: uid(), champ: c.id, level: Math.min(MAX_LEVEL, stageLevel(run.stage) + DIFFICULTY.monsterLevel), hp: 0, items: [], boost: 1 };
   unit.hp = derive(c, unit.level, [], data).hp;
   return { name: c.name, units: [unit], champs: { [c.id]: c }, mult: DIFFICULTY.rivalMult[run.stage] ?? 1, skill: 0.7 };
@@ -724,8 +772,8 @@ export function monsterSide(id: MonsterId, run: Run, data: GameData, drake?: Dra
 /* ---------- Combate ---------- */
 
 /** Efectos que duran unos turnos. */
-export type Status = { stun: number; slow: number; haste: number; buff: number; guard: number; evade: number; immune: number };
-const noStatus = (): Status => ({ stun: 0, slow: 0, haste: 0, buff: 0, guard: 0, evade: 0, immune: 0 });
+export type Status = { stun: number; slow: number; haste: number; buff: number; guard: number; evade: number; immune: number; peel: number };
+const noStatus = (): Status => ({ stun: 0, slow: 0, haste: 0, buff: 0, guard: 0, evade: 0, immune: 0, peel: 0 });
 
 export type Fighter = {
   unit: Unit;
@@ -738,16 +786,21 @@ export type Fighter = {
   st: Status;
 };
 
-/** Un paso del turno, con la vida de los dos campeones en ese momento, para animarlo. */
+/** Foto del campo en un paso del turno: quién está en cada hueco, vida y escudo de todos. */
+export type Snap = { on: [number[], number[]]; hp: [number[], number[]]; sh: [number[], number[]] };
+
+/** Un paso del turno, con la vida de todos los campeones en ese momento, para animarlo. */
 export type BEvent = {
   text: string;
   kind: "intro" | "move" | "hit" | "miss" | "heal" | "shield" | "status" | "ko" | "switch" | "end";
   /** Lado que actúa o recibe (0 = tú, 1 = rival) */
   side?: 0 | 1;
+  /** Campeón de ese lado (índice en su equipo) */
+  who?: number;
   amount?: number;
   crit?: boolean;
   eff?: number;
-  snap: { a: number; b: number; ha: number; hb: number; sa: number; sb: number };
+  snap: Snap;
 };
 
 export type Battle = {
@@ -757,12 +810,14 @@ export type Battle = {
   foe: Side;
   mine: Fighter[];
   theirs: Fighter[];
-  a: number;
-  b: number;
+  /** Campeones en el campo de cada lado (índice en su equipo; -1 = hueco vacío). Uno en 1v1, dos en 2v2. */
+  on: [number[], number[]];
+  /** Línea inferior: 2v2 con tu pareja de línea */
+  duo: boolean;
   turn: number;
   /** Lo que ha pasado en el último turno */
   log: BEvent[];
-  /** Tu campeón activo ha caído y toca elegir otro */
+  /** Ha caído un campeón tuyo y toca sacar otro del banquillo */
   mustSwitch: boolean;
   result?: "win" | "lose";
   bonus: ReturnType<typeof teamBonus>;
@@ -773,11 +828,31 @@ function fighter(u: Unit, c: GChamp, data: GameData, mods: Mods): Fighter {
   return { unit: u, champ: c, max, hp: Math.min(u.hp, max.hp), shield: 0, cd: {}, st: noStatus() };
 }
 
-function say(b: Battle, text: string, kind: BEvent["kind"] = "status", extra: Partial<BEvent> = {}) {
-  const A = b.mine[b.a];
-  const B = b.theirs[b.b];
-  b.log.push({ text, kind, ...extra, snap: { a: b.a, b: b.b, ha: A.hp, hb: B.hp, sa: A.shield, sb: B.shield } });
+export const sideOf = (b: Battle, side: 0 | 1) => (side === 0 ? b.mine : b.theirs);
+
+/** Índices de los campeones en pie que están en el campo. */
+export function fieldAlive(b: Battle, side: 0 | 1): number[] {
+  const fs = sideOf(b, side);
+  return b.on[side].filter((i) => i >= 0 && fs[i].hp > 0);
 }
+
+/** Campeones en pie en el banquillo, que pueden entrar. */
+export function bench(b: Battle, side: 0 | 1): number[] {
+  return sideOf(b, side)
+    .map((f, i) => (f.hp > 0 && !b.on[side].includes(i) ? i : -1))
+    .filter((i) => i >= 0);
+}
+
+function say(b: Battle, text: string, kind: BEvent["kind"] = "status", extra: Partial<BEvent> = {}) {
+  b.log.push({
+    text,
+    kind,
+    ...extra,
+    snap: { on: [[...b.on[0]], [...b.on[1]]], hp: [b.mine.map((f) => f.hp), b.theirs.map((f) => f.hp)], sh: [b.mine.map((f) => f.shield), b.theirs.map((f) => f.shield)] },
+  });
+}
+
+const and = (xs: string[]) => xs.join(T(" y ", " and "));
 
 export function startBattle(run: Run, data: GameData, kind: Battle["kind"], foe: Side, monster?: MonsterId, drake?: Drake): Battle {
   const mine = run.team.map((u) => fighter(u, data.champions[u.champ], data, { role: run.trainer.role }));
@@ -787,26 +862,57 @@ export function startBattle(run: Run, data: GameData, kind: Battle["kind"], foe:
     f.hp = f.max.hp;
     return f;
   });
-  const a = Math.max(0, mine.findIndex((f) => f.hp > 0));
-  const b: Battle = { kind, monster, drake, foe, mine, theirs, a, b: 0, turn: 0, log: [], mustSwitch: false, bonus: teamBonus(run) };
+  const duo = isDuo(run);
+  const slots = duo ? 2 : 1;
+  const first = (fs: Fighter[]) => {
+    const out = fs.map((f, i) => (f.hp > 0 ? i : -1)).filter((i) => i >= 0).slice(0, slots);
+    while (out.length < slots) out.push(-1);
+    return out;
+  };
+  const on: [number[], number[]] = [first(mine), first(theirs)];
+  if (on[0][0] < 0) on[0][0] = 0;
+  const b: Battle = { kind, monster, drake, foe, mine, theirs, on, duo, turn: 0, log: [], mustSwitch: false, bonus: teamBonus(run) };
+  const pair = !!foe.mate;
   say(
     b,
     kind === "boss"
       ? T(`¡${foe.name} te reta! Es el jefe de ${STAGES[run.stage].name}.`, `${foe.name} challenges you! They're the ${STAGES[run.stage].name} boss.`)
       : kind === "objective"
         ? T(`¡Aparece el ${foe.name}!`, `The ${foe.name} appears!`)
-        : T(`¡${foe.name} (${foe.team}) quiere combatir!`, `${foe.name} (${foe.team}) wants to battle!`),
+        : T(`¡${foe.name} (${foe.team}) ${pair ? "quieren" : "quiere"} combatir!`, `${foe.name} (${foe.team}) ${pair ? "want" : "wants"} to battle!`),
     "intro",
   );
-  const go = mine[a].champ.name;
-  say(b, kind === "objective" ? T(`¡Adelante, ${go}!`, `Go, ${go}!`) : T(`${foe.name} saca a ${theirs[0].champ.name}. ¡Adelante, ${go}!`, `${foe.name} sends out ${theirs[0].champ.name}. Go, ${go}!`), "intro");
+  const go = and(fieldAlive(b, 0).map((i) => mine[i].champ.name));
+  const out = and(fieldAlive(b, 1).map((i) => theirs[i].champ.name));
+  say(b, kind === "objective" ? T(`¡Adelante, ${go}!`, `Go, ${go}!`) : T(`${foe.name} ${pair ? "sacan" : "saca"} a ${out}. ¡Adelante, ${go}!`, `${foe.name} ${pair ? "send" : "sends"} out ${out}. Go, ${go}!`), "intro");
   return b;
 }
 
-export type Action = { type: "move"; key: MoveKey } | { type: "switch"; to: number };
+/**
+ * Orden para un campeón: un movimiento (con el hueco al que apunta: rival si
+ * hace daño, aliado si es de apoyo) o un cambio por uno del banquillo.
+ */
+export type Order = { type: "move"; key: MoveKey; target?: number } | { type: "switch"; to: number };
+/** En 1v1, una orden; en 2v2, una por hueco tuyo en el campo. */
+export type Action = Order | { type: "duo"; orders: Order[] };
 
 const isMonster = (f: Fighter) => f.champ.tags.includes("Monster");
 const nameOf = (f: Fighter, side: 0 | 1) => (side === 0 || isMonster(f) ? f.champ.name : T(`${f.champ.name} rival`, `Enemy ${f.champ.name}`));
+
+/** "Proteger": en 2v2 te pones delante y recibes los golpes dirigidos a tu compañero este turno. */
+export function peelMove(): Move {
+  return { key: "P", name: T("Proteger", "Peel"), icon: "", power: 0, dmg: "phys", hits: 1, cooldown: 1, priority: true, fx: ["peel"], crit: false };
+}
+
+/** Movimientos del campeón en este combate: en 2v2 se suma "Proteger". */
+export function battleMoves(b: Battle, f: Fighter): Move[] {
+  const ms = movesOf(f.champ);
+  return b.duo && !isMonster(f) ? [...ms, peelMove()] : ms;
+}
+
+const ALLY_FX: SpellFx[] = ["shield", "heal", "buff", "haste", "guard"];
+/** Movimiento de apoyo sin daño: en 2v2 se lanza sobre el aliado que elijas. */
+export const allyMove = (m: Move) => m.power <= 0 && m.fx.some((f) => ALLY_FX.includes(f));
 
 /** Velocidad real: ralentizado, acelerado y alma de las nubes. */
 function speed(f: Fighter, side: 0 | 1, b: Battle) {
@@ -816,6 +922,11 @@ function speed(f: Fighter, side: 0 | 1, b: Battle) {
 function statFor(f: Fighter, m: Move) {
   return m.dmg === "magic" ? f.max.ap : m.dmg === "phys" ? f.max.ad : Math.max(f.max.ad, f.max.ap);
 }
+
+/** En 2v2 los golpes en área reparten: cada objetivo recibe menos. */
+const SPREAD = 0.75;
+/** El que protege a su compañero recibe el golpe algo amortiguado. */
+const PEEL_TAKEN = 0.75;
 
 /** Daño de un golpe sin azar ni crítico, para estimar y para el golpe real. */
 function rawDamage(b: Battle, side: 0 | 1, att: Fighter, def: Fighter, m: Move) {
@@ -830,13 +941,15 @@ function rawDamage(b: Battle, side: 0 | 1, att: Fighter, def: Fighter, m: Move) 
   return { d, tm };
 }
 
-/** Daño aproximado de un movimiento contra el rival actual (para los botones). */
-export function estimate(b: Battle, side: 0 | 1, m: Move) {
-  const att = side === 0 ? b.mine[b.a] : b.theirs[b.b];
-  const def = side === 0 ? b.theirs[b.b] : b.mine[b.a];
-  if (m.power <= 0) return { dmg: 0, tm: 1 };
+/** Daño aproximado de un movimiento de un campeón contra el que ocupa un hueco rival (para los botones). */
+export function estimate(b: Battle, side: 0 | 1, i: number, m: Move, slot = 0) {
+  const other = side === 0 ? 1 : 0;
+  const att = sideOf(b, side)[i];
+  const def = sideOf(b, other)[b.on[other][slot] ?? -1] ?? sideOf(b, other)[fieldAlive(b, other)[0]];
+  if (m.power <= 0 || !att || !def) return { dmg: 0, tm: 1 };
   const { d, tm } = rawDamage(b, side, att, def, m);
-  return { dmg: Math.round(d * 0.95 * m.hits), tm };
+  const spread = m.area && fieldAlive(b, other).length > 1 ? SPREAD : 1;
+  return { dmg: Math.round(d * 0.95 * m.hits * spread), tm };
 }
 
 function heal(f: Fighter, amount: number) {
@@ -845,48 +958,15 @@ function heal(f: Fighter, amount: number) {
   return f.hp - before;
 }
 
-function useMove(b: Battle, side: 0 | 1, move: Move) {
-  const me = side === 0 ? b.mine[b.a] : b.theirs[b.b];
-  const foe = side === 0 ? b.theirs[b.b] : b.mine[b.a];
+/** Un golpe de un movimiento sobre un campeón rival. */
+function strike(b: Battle, side: 0 | 1, me: Fighter, t: number, move: Move, mult: number) {
   const other = side === 0 ? 1 : 0;
-  const who = nameOf(me, side);
+  const foe = sideOf(b, other)[t];
   const them = nameOf(foe, other);
   const supp = side === 0 ? b.bonus.support : 1;
-  const end = /[!?.…]$/.test(move.name) ? "" : T(".", "!");
-  say(b, T(`${who} usa ${move.name}${end}`, `${who} used ${move.name}${end}`), "move", { side });
-  if (move.cooldown) me.cd[move.key] = move.cooldown + 1;
-
-  // Efectos sobre sí mismo
-  const solo = move.power <= 0;
-  if (move.fx.includes("shield")) {
-    me.shield += Math.round(me.max.hp * (solo ? 0.25 : 0.15) * supp);
-    say(b, T(`${who} se cubre con un escudo.`, `${who} shields up.`), "shield", { side });
-  }
-  if (move.fx.includes("heal")) {
-    const h = heal(me, me.max.hp * (solo ? 0.28 : 0.15) * supp);
-    say(b, h ? T(`${who} recupera ${h} de vida.`, `${who} restores ${h} health.`) : T(`${who} ya tenía la vida al máximo.`, `${who} was already at full health.`), "heal", { side, amount: h });
-  }
-  if (move.fx.includes("guard")) {
-    me.st.guard = 2;
-    say(b, T(`${who} se protege: recibirá menos daño.`, `${who} braces: it will take less damage.`), "status", { side });
-  }
-  if (move.fx.includes("buff")) {
-    me.st.buff = 3;
-    say(b, T(`${who} se potencia: hará más daño unos turnos.`, `${who} powers up: more damage for a few turns.`), "status", { side });
-  }
-  if (move.fx.includes("haste") && solo) {
-    me.st.haste = 3;
-    say(b, T(`${who} gana velocidad.`, `${who} speeds up.`), "status", { side });
-  }
-  if (move.fx.includes("evade")) {
-    me.st.evade = 2;
-    say(b, T(`${who} se prepara para esquivar el siguiente golpe.`, `${who} gets ready to dodge the next hit.`), "status", { side });
-  }
-  if (move.power <= 0) return;
-
   if (foe.st.evade) {
     foe.st.evade = 0;
-    say(b, T(`¡${them} lo esquiva!`, `${them} dodged it!`), "miss", { side: other });
+    say(b, T(`¡${them} lo esquiva!`, `${them} dodged it!`), "miss", { side: other, who: t });
     return;
   }
   let total = 0;
@@ -894,7 +974,7 @@ function useMove(b: Battle, side: 0 | 1, move: Move) {
     const { d, tm } = rawDamage(b, side, me, foe, move);
     const critChance = move.crit ? me.max.crit + (side === 0 ? b.bonus.crit : 0) + (move.fx.includes("empower") ? 0.1 : 0) : 0;
     const crit = rand() < critChance;
-    const dmg = Math.max(1, Math.round(d * (crit ? 1.75 : 1) * (0.9 + rand() * 0.1)));
+    const dmg = Math.max(1, Math.round(d * mult * (crit ? 1.75 : 1) * (0.9 + rand() * 0.1)));
     const absorbed = Math.min(foe.shield, dmg);
     foe.shield -= absorbed;
     foe.hp = Math.max(0, foe.hp - (dmg - absorbed));
@@ -908,145 +988,286 @@ function useMove(b: Battle, side: 0 | 1, move: Move) {
       .filter(Boolean)
       .join(" ");
     const hit = dmg - absorbed;
+    // En 2v2 se dice a quién se golpea.
+    const to = b.duo ? T(`${them}: `, `${them}: `) : "";
     const line = T(
-      `${hit} de daño${absorbed ? ` (${absorbed} al escudo)` : ""}.${tags ? ` ${tags}` : ""}${drain ? ` Roba ${drain} de vida.` : ""}`,
-      `${hit} damage${absorbed ? ` (${absorbed} to the shield)` : ""}.${tags ? ` ${tags}` : ""}${drain ? ` Steals ${drain} health.` : ""}`,
+      `${to}${hit} de daño${absorbed ? ` (${absorbed} al escudo)` : ""}.${tags ? ` ${tags}` : ""}${drain ? ` Roba ${drain} de vida.` : ""}`,
+      `${to}${hit} damage${absorbed ? ` (${absorbed} to the shield)` : ""}.${tags ? ` ${tags}` : ""}${drain ? ` Steals ${drain} health.` : ""}`,
     );
-    say(b, line, "hit", {
-      side: other,
-      amount: dmg - absorbed,
-      crit,
-      eff: tm,
-    });
+    say(b, line, "hit", { side: other, who: t, amount: hit, crit, eff: tm });
   }
   // Ejecución del ancestral
   if (side === 0 && b.bonus.elder && foe.hp > 0 && foe.hp < foe.max.hp * 0.15) {
     foe.hp = 0;
-    say(b, T(`¡La ejecución del ancestral remata a ${them}!`, `The Elder's execute finishes off ${them}!`), "hit", { side: other });
+    say(b, T(`¡La ejecución del ancestral remata a ${them}!`, `The Elder's execute finishes off ${them}!`), "hit", { side: other, who: t });
   }
   if (foe.hp <= 0) {
-    say(b, T(`¡${them} cae!`, `${them} fainted!`), "ko", { side: other });
+    say(b, T(`¡${them} cae!`, `${them} fainted!`), "ko", { side: other, who: t });
     return;
   }
   if (move.fx.includes("stun")) {
-    if (isMonster(foe) || foe.st.immune) say(b, T(`${them} resiste el control.`, `${them} resists the crowd control.`), "status", { side: other });
+    if (isMonster(foe) || foe.st.immune) say(b, T(`${them} resiste el control.`, `${them} resists the crowd control.`), "status", { side: other, who: t });
     else {
       foe.st.stun = 1;
-      say(b, T(`¡${them} queda aturdido!`, `${them} is stunned!`), "status", { side: other });
+      say(b, T(`¡${them} queda aturdido!`, `${them} is stunned!`), "status", { side: other, who: t });
     }
   }
   if (move.fx.includes("slow")) {
     foe.st.slow = 2;
-    say(b, T(`${them} queda ralentizado.`, `${them} is slowed.`), "status", { side: other });
+    say(b, T(`${them} queda ralentizado.`, `${them} is slowed.`), "status", { side: other, who: t });
   }
-  if (move.fx.includes("haste") && !solo) me.st.haste = 2;
-  if (total && move.fx.includes("multi") && move.hits > 1) say(b, T(`¡${move.hits} golpes, ${total} de daño en total!`, `Hit ${move.hits} times, ${total} damage in total!`), "status", { side: other });
+  if (total && move.fx.includes("multi") && move.hits > 1) say(b, T(`¡${move.hits} golpes, ${total} de daño en total!`, `Hit ${move.hits} times, ${total} damage in total!`), "status", { side: other, who: t });
+}
+
+function useMove(b: Battle, side: 0 | 1, i: number, move: Move, slot?: number) {
+  const team = sideOf(b, side);
+  const me = team[i];
+  const other = side === 0 ? 1 : 0;
+  const who = nameOf(me, side);
+  const supp = side === 0 ? b.bonus.support : 1;
+  const end = /[!?.…]$/.test(move.name) ? "" : T(".", "!");
+  say(b, T(`${who} usa ${move.name}${end}`, `${who} used ${move.name}${end}`), "move", { side, who: i });
+  if (move.cooldown) me.cd[move.key] = move.cooldown + 1;
+
+  if (move.fx.includes("peel")) {
+    me.st.peel = 1;
+    say(b, T(`${who} se pone delante de su compañero.`, `${who} steps in front of their partner.`), "shield", { side, who: i });
+    return;
+  }
+
+  // Efectos de apoyo: sobre sí mismo o, en 2v2, sobre el aliado elegido.
+  const solo = move.power <= 0;
+  let ai = i;
+  if (b.duo && allyMove(move) && slot !== undefined) {
+    const k = b.on[side][slot];
+    if (k !== undefined && k >= 0 && team[k].hp > 0) ai = k;
+  }
+  const ally = team[ai];
+  const an = nameOf(ally, side);
+  const self = ai === i;
+  if (move.fx.includes("shield")) {
+    ally.shield += Math.round(ally.max.hp * (solo ? 0.25 : 0.15) * supp);
+    say(b, self ? T(`${who} se cubre con un escudo.`, `${who} shields up.`) : T(`${who} protege a ${an} con un escudo.`, `${who} shields ${an}.`), "shield", { side, who: ai });
+  }
+  if (move.fx.includes("heal")) {
+    const h = heal(ally, ally.max.hp * (solo ? 0.28 : 0.15) * supp);
+    say(
+      b,
+      h
+        ? self
+          ? T(`${who} recupera ${h} de vida.`, `${who} restores ${h} health.`)
+          : T(`${who} cura ${h} de vida a ${an}.`, `${who} heals ${an} for ${h}.`)
+        : T(`${an} ya tenía la vida al máximo.`, `${an} was already at full health.`),
+      "heal",
+      { side, who: ai, amount: h },
+    );
+  }
+  if (move.fx.includes("guard")) {
+    ally.st.guard = 2;
+    say(b, T(`${an} se protege: recibirá menos daño.`, `${an} braces: it will take less damage.`), "status", { side, who: ai });
+  }
+  if (move.fx.includes("buff")) {
+    ally.st.buff = 3;
+    say(b, T(`${an} se potencia: hará más daño unos turnos.`, `${an} powers up: more damage for a few turns.`), "status", { side, who: ai });
+  }
+  if (move.fx.includes("haste") && solo) {
+    ally.st.haste = 3;
+    say(b, T(`${an} gana velocidad.`, `${an} speeds up.`), "status", { side, who: ai });
+  }
+  if (move.fx.includes("evade")) {
+    me.st.evade = 2;
+    say(b, T(`${who} se prepara para esquivar el siguiente golpe.`, `${who} gets ready to dodge the next hit.`), "status", { side, who: i });
+  }
+  if (solo) return;
+
+  const foes = sideOf(b, other);
+  const alive = fieldAlive(b, other);
+  if (!alive.length) return;
+  if (move.area && alive.length > 1) {
+    for (const t of alive) strike(b, side, me, t, move, SPREAD);
+  } else {
+    // Si el objetivo ya no está, el golpe va al otro rival.
+    let t = slot !== undefined && alive.includes(b.on[other][slot]) ? b.on[other][slot] : alive[0];
+    let mult = 1;
+    const guard = alive.find((k) => k !== t && foes[k].st.peel);
+    if (guard !== undefined) {
+      t = guard;
+      mult = PEEL_TAKEN;
+      say(b, T(`¡${nameOf(foes[t], other)} se interpone y recibe el golpe!`, `${nameOf(foes[t], other)} jumps in and takes the hit!`), "status", { side: other, who: t });
+    }
+    strike(b, side, me, t, move, mult);
+  }
+  if (move.fx.includes("haste")) me.st.haste = 2;
 }
 
 /** Movimientos disponibles ahora (sin enfriamiento). */
-export function readyMoves(f: Fighter): Move[] {
-  return movesOf(f.champ).filter((m) => !f.cd[m.key]);
+export function readyMoves(b: Battle, f: Fighter): Move[] {
+  return battleMoves(b, f).filter((m) => !f.cd[m.key]);
+}
+
+/** Lo que vale un efecto de apoyo según cómo está quien lo recibe. */
+function supportValue(m: Move, f: Fighter) {
+  const life = f.hp / f.max.hp;
+  let v = 0;
+  if (m.fx.includes("heal")) v += life < 0.5 ? (1 - life) * 0.9 : 0.02;
+  if (m.fx.includes("shield")) v += !f.shield && life < 0.8 ? 0.3 : 0.02;
+  if (m.fx.includes("guard")) v += !f.st.guard && life < 0.7 ? 0.3 : 0.02;
+  if (m.fx.includes("buff")) v += !f.st.buff && life > 0.4 ? 0.3 + Math.min(0.15, f.max.ad / 2000) : 0;
+  if (m.fx.includes("haste") && m.power <= 0) v += !f.st.haste ? 0.12 : 0;
+  return v;
 }
 
 /**
- * Elige jugada: rematar si puede; si no, valora el daño frente a la vida que le
- * queda al rival, el control, las curas y escudos cuando hacen falta.
+ * Elige la orden de un campeón: rematar si puede; si no, valora el daño frente
+ * a la vida que le queda a cada rival, el control, y las curas, escudos y
+ * "Proteger" cuando el compañero los necesita.
  * skill 1 = elige casi siempre lo mejor; 0 = mucho más al azar.
  */
-export function chooseMove(b: Battle, side: 0 | 1, skill = 0.8): Move {
-  const me = side === 0 ? b.mine[b.a] : b.theirs[b.b];
-  const foe = side === 0 ? b.theirs[b.b] : b.mine[b.a];
-  const moves = readyMoves(me);
+export function chooseOrder(b: Battle, side: 0 | 1, i: number, skill = 0.8): Order {
+  const team = sideOf(b, side);
+  const me = team[i];
+  const other = side === 0 ? 1 : 0;
+  const foes = sideOf(b, other);
   const life = me.hp / me.max.hp;
-  const scored = moves.map((m) => {
-    const { dmg } = estimate(b, side, m);
-    const left = foe.hp + foe.shield;
-    let v = Math.min(1, dmg / Math.max(1, left)) + (dmg >= left ? 1 + (m.priority ? 0.5 : 0) : 0);
-    if (m.fx.includes("stun") && !foe.st.immune && !foe.st.stun && !isMonster(foe)) v += 0.35;
-    if (m.fx.includes("slow") && !foe.st.slow) v += 0.08;
-    if (m.fx.includes("heal")) v += life < 0.5 ? (1 - life) * 0.9 : 0.02;
-    if (m.fx.includes("shield")) v += !me.shield && life < 0.8 ? 0.3 : 0.02;
-    if (m.fx.includes("guard")) v += !me.st.guard && life < 0.7 ? 0.3 : 0.02;
-    if (m.fx.includes("buff")) v += !me.st.buff && life > 0.4 ? 0.3 : 0;
-    if (m.fx.includes("haste") && m.power <= 0) v += !me.st.haste ? 0.12 : 0;
-    if (m.fx.includes("evade")) v += !me.st.evade && life < 0.6 ? 0.25 : 0.02;
-    if (m.priority && life < 0.35) v += 0.1;
-    return { m, v: v * (1 - (1 - skill) * 0.6 * rand()) };
-  });
-  return scored.sort((x, y) => y.v - x.v)[0]?.m ?? basicAttack(me.champ);
+  const mySlot = b.on[side].indexOf(i);
+  const mates = b.on[side].map((k, s) => ({ k, s })).filter(({ k }) => k >= 0 && k !== i && team[k].hp > 0);
+  const targets = b.on[other].map((k, s) => ({ k, s })).filter(({ k }) => k >= 0 && foes[k].hp > 0);
+  const opts: { o: Order; v: number }[] = [];
+  for (const m of readyMoves(b, me)) {
+    if (m.fx.includes("peel")) {
+      const mate = mates[0];
+      if (!mate) continue;
+      const ml = team[mate.k].hp / team[mate.k].max.hp;
+      opts.push({ o: { type: "move", key: m.key }, v: ml < 0.45 && life > 0.5 && !me.cd.P ? 0.45 : 0 });
+      continue;
+    }
+    if (m.power <= 0) {
+      // Apoyo: sobre sí mismo o sobre el compañero que más lo necesite.
+      const on = b.duo && allyMove(m) ? [{ k: i, s: mySlot }, ...mates] : [{ k: i, s: mySlot }];
+      for (const { k, s } of on) opts.push({ o: { type: "move", key: m.key, target: s }, v: supportValue(m, team[k]) + (m.fx.includes("evade") && !me.st.evade && life < 0.6 ? 0.25 : 0) });
+      continue;
+    }
+    for (const { k, s } of m.area ? targets.slice(0, 1) : targets) {
+      const foe = foes[k];
+      const hitAll = m.area ? targets : [{ k, s }];
+      let v = 0;
+      for (const h of hitAll) {
+        const f = foes[h.k];
+        const { dmg } = estimate(b, side, i, m, h.s);
+        const left = f.hp + f.shield;
+        v += Math.min(1, dmg / Math.max(1, left)) + (dmg >= left ? 1 + (m.priority ? 0.5 : 0) : 0);
+      }
+      if (m.fx.includes("stun") && !foe.st.immune && !foe.st.stun && !isMonster(foe)) v += 0.35;
+      if (m.fx.includes("slow") && !foe.st.slow) v += 0.08;
+      v += supportValue(m, me);
+      if (m.fx.includes("evade")) v += !me.st.evade && life < 0.6 ? 0.25 : 0.02;
+      if (m.priority && life < 0.35) v += 0.1;
+      opts.push({ o: { type: "move", key: m.key, target: s }, v });
+    }
+  }
+  const scored = opts.map((x) => ({ ...x, v: x.v * (1 - (1 - skill) * 0.6 * rand()) }));
+  return scored.sort((x, y) => y.v - x.v)[0]?.o ?? { type: "move", key: "A", target: targets[0]?.s };
 }
 
 const alive = (fs: Fighter[]) => fs.some((f) => f.hp > 0);
 
-function act(b: Battle, side: 0 | 1, m: Move) {
-  const me = side === 0 ? b.mine[b.a] : b.theirs[b.b];
-  if (me.hp <= 0) return;
+function act(b: Battle, side: 0 | 1, i: number, m: Move, slot?: number) {
+  const me = sideOf(b, side)[i];
+  if (me.hp <= 0 || !b.on[side].includes(i)) return;
   if (me.st.stun) {
     me.st.stun = 0;
     me.st.immune = 2;
-    say(b, T(`${nameOf(me, side)} está aturdido y no puede moverse.`, `${nameOf(me, side)} is stunned and can't move.`), "status", { side });
+    say(b, T(`${nameOf(me, side)} está aturdido y no puede moverse.`, `${nameOf(me, side)} is stunned and can't move.`), "status", { side, who: i });
     return;
   }
-  useMove(b, side, m);
+  if (m.power > 0 && !fieldAlive(b, side === 0 ? 1 : 0).length) return;
+  useMove(b, side, i, m, slot);
 }
 
-/** Resuelve un turno completo con tu acción y la del rival. */
+/** Resuelve un turno completo con tus órdenes y las del rival. */
 export function playTurn(prev: Battle, action: Action): Battle {
   const b: Battle = structuredClone(prev);
   b.log = [];
   b.turn++;
+  const orders = action.type === "duo" ? action.orders : [action];
 
+  // Toca rellenar un hueco: entra el campeón elegido sin gastar turno.
   if (b.mustSwitch) {
-    if (action.type !== "switch") return prev;
-    b.a = action.to;
-    b.mustSwitch = false;
-    say(b, T(`¡Adelante, ${b.mine[b.a].champ.name}!`, `Go, ${b.mine[b.a].champ.name}!`), "switch", { side: 0 });
+    const o = orders.find((x) => x.type === "switch");
+    if (!o || o.type !== "switch" || !bench(b, 0).includes(o.to)) return prev;
+    const slot = b.on[0].findIndex((k) => k < 0 || b.mine[k].hp <= 0);
+    b.on[0][slot < 0 ? 0 : slot] = o.to;
+    say(b, T(`¡Adelante, ${b.mine[o.to].champ.name}!`, `Go, ${b.mine[o.to].champ.name}!`), "switch", { side: 0, who: o.to });
+    b.mustSwitch = b.on[0].some((k) => k < 0 || b.mine[k].hp <= 0) && bench(b, 0).length > 0;
     return b;
   }
 
-  const foeMove = chooseMove(b, 1, b.foe.skill);
-  if (action.type === "switch") {
-    const out = b.mine[b.a];
-    out.shield = 0;
-    out.st = noStatus();
-    b.a = action.to;
-    say(b, T(`Cambias a ${b.mine[b.a].champ.name}.`, `You switch to ${b.mine[b.a].champ.name}.`), "switch", { side: 0 });
-    act(b, 1, foeMove);
-  } else {
-    const me = b.mine[b.a];
-    const myMove = movesOf(me.champ).find((m) => m.key === action.key && !me.cd[m.key]) ?? basicAttack(me.champ);
-    const foe = b.theirs[b.b];
-    const meFirst =
-      myMove.priority !== foeMove.priority ? myMove.priority : speed(me, 0, b) !== speed(foe, 1, b) ? speed(me, 0, b) > speed(foe, 1, b) : rand() < 0.5;
-    if (meFirst) {
-      act(b, 0, myMove);
-      act(b, 1, foeMove);
-    } else {
-      act(b, 1, foeMove);
-      act(b, 0, myMove);
+  type Plan = { side: 0 | 1; i: number; m: Move; slot?: number; r: number };
+  const plans: Plan[] = [];
+  const foeOrders = fieldAlive(b, 1).map((i) => ({ i, o: chooseOrder(b, 1, i, b.foe.skill) }));
+
+  // Primero, los cambios.
+  const entering = new Set<number>();
+  b.on[0].forEach((i, s) => {
+    const o = orders[s];
+    if (i < 0 || b.mine[i].hp <= 0 || !o) return;
+    if (o.type === "switch") {
+      if (!bench(b, 0).includes(o.to) || entering.has(o.to)) return;
+      entering.add(o.to);
+      const out = b.mine[i];
+      out.shield = 0;
+      out.st = noStatus();
+      b.on[0][s] = o.to;
+      say(b, T(`Retiras a ${out.champ.name} y sacas a ${b.mine[o.to].champ.name}.`, `You pull back ${out.champ.name} and send out ${b.mine[o.to].champ.name}.`), "switch", { side: 0, who: o.to });
+      return;
     }
+    const me = b.mine[i];
+    const m = battleMoves(b, me).find((x) => x.key === o.key && !me.cd[x.key]) ?? basicAttack(me.champ);
+    plans.push({ side: 0, i, m, slot: o.target, r: rand() });
+  });
+  for (const { i, o } of foeOrders) {
+    if (o.type !== "move") continue;
+    const f = b.theirs[i];
+    const m = battleMoves(b, f).find((x) => x.key === o.key) ?? basicAttack(f.champ);
+    plans.push({ side: 1, i, m, slot: o.target, r: rand() });
   }
+
+  // Luego, los movimientos: prioridad y después velocidad.
+  const spd = (p: Plan) => speed(sideOf(b, p.side)[p.i], p.side, b);
+  plans.sort((x, y) => Number(y.m.priority) - Number(x.m.priority) || spd(y) - spd(x) || x.r - y.r);
+  for (const p of plans) act(b, p.side, p.i, p.m, p.slot);
+
   // Fin del turno: enfriamientos y efectos que se acaban.
   for (const f of [...b.mine, ...b.theirs]) {
     for (const k of Object.keys(f.cd) as MoveKey[]) if (f.cd[k]) f.cd[k]!--;
-    for (const k of ["slow", "haste", "buff", "guard", "evade", "immune"] as const) if (f.st[k]) f.st[k]--;
+    for (const k of ["slow", "haste", "buff", "guard", "evade", "immune", "peel"] as const) if (f.st[k]) f.st[k]--;
   }
 
-  if (b.theirs[b.b].hp <= 0) {
-    const next = b.theirs.findIndex((f) => f.hp > 0);
-    if (next < 0) {
-      b.result = "win";
-      say(b, b.kind === "objective" ? T(`¡Has asegurado el ${b.foe.name}!`, `You secured the ${b.foe.name}!`) : T(`¡Has ganado a ${b.foe.name}!`, `You beat ${b.foe.name}!`), "end");
-    } else {
-      b.b = next;
-      say(b, T(`${b.foe.name} saca a ${b.theirs[next].champ.name}.`, `${b.foe.name} sends out ${b.theirs[next].champ.name}.`), "switch", { side: 1 });
+  // El rival saca a los siguientes.
+  if (!alive(b.theirs)) {
+    b.result = "win";
+    say(b, b.kind === "objective" ? T(`¡Has asegurado el ${b.foe.name}!`, `You secured the ${b.foe.name}!`) : T(`¡Has ganado a ${b.foe.name}!`, `You beat ${b.foe.name}!`), "end");
+  } else {
+    const out: string[] = [];
+    b.on[1].forEach((k, s) => {
+      if (k >= 0 && b.theirs[k].hp > 0) return;
+      const next = bench(b, 1)[0];
+      b.on[1][s] = next ?? -1;
+      if (next !== undefined) out.push(b.theirs[next].champ.name);
+    });
+    if (out.length) {
+      const pair = !!b.foe.mate;
+      say(b, T(`${b.foe.name} ${pair ? "sacan" : "saca"} a ${and(out)}.`, `${b.foe.name} ${pair ? "send" : "sends"} out ${and(out)}.`), "switch", { side: 1, who: b.on[1].find((k) => k >= 0) });
     }
   }
-  if (!b.result && b.mine[b.a].hp <= 0) {
+  if (!b.result) {
     if (!alive(b.mine)) {
       b.result = "lose";
       say(b, T("No te quedan campeones en pie…", "You have no champions left standing…"), "end");
-    } else b.mustSwitch = true;
+    } else {
+      b.on[0] = b.on[0].map((k) => (k >= 0 && b.mine[k].hp > 0 ? k : -1));
+      b.mustSwitch = b.on[0].some((k) => k < 0) && bench(b, 0).length > 0;
+    }
   }
   return b;
 }

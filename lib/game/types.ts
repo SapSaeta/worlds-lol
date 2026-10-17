@@ -10,7 +10,7 @@ export type Cls = "Fighter" | "Tank" | "Mage" | "Assassin" | "Marksman" | "Suppo
 export type SpellKey = "Q" | "W" | "E" | "R";
 
 /** Efectos de una habilidad, sacados de su descripción oficial. */
-export type SpellFx = "stun" | "slow" | "shield" | "heal" | "drain" | "dash" | "haste" | "empower" | "buff" | "guard" | "execute" | "multi" | "evade";
+export type SpellFx = "stun" | "slow" | "shield" | "heal" | "drain" | "dash" | "haste" | "empower" | "buff" | "guard" | "execute" | "multi" | "evade" | "peel";
 /** Tipo de daño: físico, mágico, verdadero, el principal del campeón ("auto") o ninguno. */
 export type DmgType = "phys" | "magic" | "true" | "auto" | "none";
 
