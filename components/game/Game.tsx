@@ -8,6 +8,7 @@ import { useLocale } from "@/components/LocaleProvider";
 import { PixelImg } from "@/components/PixelImg";
 import { TeamLogo } from "@/components/TeamLogo";
 import { BattleView } from "@/components/game/BattleView";
+import { TypeChart } from "@/components/game/TypeChart";
 import { MapView } from "@/components/game/MapView";
 import { ShopView } from "@/components/game/ShopView";
 import { TeamBar } from "@/components/game/TeamBar";
@@ -296,15 +297,18 @@ export function Game({ data }: { data: GameData }) {
     );
   } else if (screen.s === "battle") {
     body = (
-      <BattleView
-        battle={screen.battle}
-        onAction={(a: Action) => go({ s: "battle", battle: playTurn(screen.battle, a) })}
-        onDone={() => {
-          const res = finishBattle(run, screen.battle, data);
-          setRun(res.run);
-          go(res.run.over ? { s: "end" } : { s: "reward", battle: screen.battle, gold: res.gold, levels: res.levels, reward: res.reward });
-        }}
-      />
+      <div className="g-battle-layout">
+        <BattleView
+          battle={screen.battle}
+          onAction={(a: Action) => go({ s: "battle", battle: playTurn(screen.battle, a) })}
+          onDone={() => {
+            const res = finishBattle(run, screen.battle, data);
+            setRun(res.run);
+            go(res.run.over ? { s: "end" } : { s: "reward", battle: screen.battle, gold: res.gold, levels: res.levels, reward: res.reward });
+          }}
+        />
+        <TypeChart battle={screen.battle} />
+      </div>
     );
   } else if (screen.s === "reward") {
     body = <Reward run={run} data={data} screen={screen} onDone={(r) => (setRun(r), afterReward(screen.battle, r))} />;
@@ -412,7 +416,7 @@ export function Game({ data }: { data: GameData }) {
   }
 
   return (
-    <div className="g-wrap">
+    <div className={`g-wrap${screen.s === "battle" ? " wide" : ""}`}>
       {screen.s !== "end" ? <Hud run={run} data={data} /> : null}
       {body}
     </div>
