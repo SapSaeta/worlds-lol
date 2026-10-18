@@ -2852,6 +2852,127 @@ button {
   justify-self: end;
 }
 
+/* Tabla de tipos: se abre con un botón del combate; a su lado en escritorio, debajo en móvil */
+
+.g-wrap.wide {
+  max-width: 1160px;
+}
+
+.g-battle-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.g-battle-layout.open {
+  grid-template-columns: minmax(0, 1fr) 236px;
+  gap: 18px;
+  align-items: start;
+}
+
+.g-types {
+  position: sticky;
+  top: 12px;
+  display: grid;
+  gap: 8px;
+  padding: 12px 10px;
+}
+
+.g-types-body {
+  display: grid;
+  gap: 6px;
+}
+
+.g-types-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--line);
+  margin-bottom: 2px;
+}
+
+.g-types-close {
+  padding: 2px 4px;
+  background: none;
+  border: 0;
+  font: inherit;
+  font-size: 14px;
+  color: var(--line);
+  cursor: pointer;
+}
+
+.g-switch-open {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.g-types-head,
+.g-types-row {
+  display: grid;
+  grid-template-columns: 74px 1fr 1fr;
+  gap: 6px;
+  align-items: center;
+}
+
+.g-types-head {
+  font-size: 15px;
+  line-height: 1;
+}
+
+.g-types-row {
+  padding: 3px;
+  border: 2px solid transparent;
+}
+
+.g-types-row > .badge {
+  justify-self: start;
+}
+
+.g-types-row.foe {
+  background: rgba(176, 48, 32, 0.08);
+}
+
+.g-types-row.mine {
+  border-color: var(--line);
+  background: #f8f0c0;
+}
+
+.g-types-list {
+  display: grid;
+  gap: 3px;
+  justify-items: start;
+}
+
+.g-types-list .badge {
+  font-size: 7px;
+  padding: 3px 4px 2px;
+  opacity: 0.75;
+}
+
+.g-types-list .on .badge {
+  opacity: 1;
+  outline: 2px solid var(--line);
+  outline-offset: 1px;
+}
+
+.g-types-note {
+  margin: 4px 0 0;
+  font-size: 15px;
+  line-height: 1.05;
+}
+
+@media (max-width: 1000px) {
+  .g-battle-layout.open {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .g-types {
+    position: static;
+  }
+}
+
 .g-switch {
   display: grid;
   grid-template-columns: 1fr 1fr;
