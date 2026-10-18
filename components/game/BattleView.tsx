@@ -79,7 +79,8 @@ function Float({ ev }: { ev: BEvent }) {
 }
 
 /** Pantalla de combate por turnos, al estilo de los juegos de Pokémon. En 2v2, das una orden a cada campeón. */
-export function BattleView({ battle, onAction, onDone }: { battle: Battle; onAction: (a: Action) => void; onDone: () => void }) {
+/** `onTypes` abre o cierra la tabla de tipos, que va fuera de la pantalla de combate. */
+export function BattleView({ battle, onAction, onDone, onTypes }: { battle: Battle; onAction: (a: Action) => void; onDone: () => void; onTypes?: () => void }) {
   const { t } = useLocale();
   const [shown, setShown] = useState(battle.log.length);
   const [switching, setSwitching] = useState(false);
@@ -167,7 +168,7 @@ export function BattleView({ battle, onAction, onDone }: { battle: Battle; onAct
   const usable = (m: Move) => !!me && !(me.cd[m.key] ?? 0) && (!m.fx.includes("peel") || canPeel);
 
   // Teclado: Q W E R para las habilidades, A para el ataque básico, P para
-  // proteger (2v2), C para cambiar (1-5 eligen), 1-2 eligen objetivo y
+  // proteger (2v2), C para cambiar (1-5 eligen), T para la tabla de tipos, 1-2 eligen objetivo y
   // Espacio o Intro para pasar el texto o continuar.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -213,6 +214,7 @@ export function BattleView({ battle, onAction, onDone }: { battle: Battle; onAct
           choose(m);
         }
       } else if (k === "c" && canSwitch) setSwitching(true);
+      else if (k === "t" && onTypes) onTypes();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -397,9 +399,16 @@ export function BattleView({ battle, onAction, onDone }: { battle: Battle; onAct
               </button>
             );
           })}
-          <button type="button" className="btn sm g-switch-open" disabled={busy || !canSwitch} onClick={() => setSwitching(true)}>
-            {t("Cambiar", "Switch")} <span className="kbd-only muted">(C)</span>
-          </button>
+          <span className="g-switch-open">
+            <button type="button" className="btn sm" disabled={busy || !canSwitch} onClick={() => setSwitching(true)}>
+              {t("Cambiar", "Switch")} <span className="kbd-only muted">(C)</span>
+            </button>
+            {onTypes ? (
+              <button type="button" className="btn sm" onClick={onTypes}>
+                {t("Tabla de tipos", "Type chart")} <span className="kbd-only muted">(T)</span>
+              </button>
+            ) : null}
+          </span>
           {foeCls && !duo ? (
             <span className="px-small muted g-matchup">
               {CLS_LABEL[me.champ.cls]} {t("contra", "vs")} {CLS_LABEL[foeCls]}
@@ -407,8 +416,8 @@ export function BattleView({ battle, onAction, onDone }: { battle: Battle; onAct
           ) : null}
           <span className="px-small muted g-keys-hint kbd-only">
             {duo
-              ? t("Teclado: Q W E R habilidades · A ataque básico · P proteger · 1-2 objetivo · C cambiar · Retroceso deshace", "Keys: Q W E R abilities · A basic attack · P peel · 1-2 target · C switch · Backspace undoes")
-              : t("Teclado: Q W E R habilidades · A ataque básico · C cambiar · Espacio pasa el texto", "Keys: Q W E R abilities · A basic attack · C switch · Space skips text")}
+              ? t("Teclado: Q W E R habilidades · A ataque básico · P proteger · 1-2 objetivo · C cambiar · T tipos · Retroceso deshace", "Keys: Q W E R abilities · A basic attack · P peel · 1-2 target · C switch · T types · Backspace undoes")
+              : t("Teclado: Q W E R habilidades · A ataque básico · C cambiar · T tipos · Espacio pasa el texto", "Keys: Q W E R abilities · A basic attack · C switch · T types · Space skips text")}
           </span>
         </div>
       ) : null}

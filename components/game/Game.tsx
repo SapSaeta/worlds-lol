@@ -96,6 +96,15 @@ export function Game({ data }: { data: GameData }) {
   const [mode, setMode] = useState<Mode>({ seed: 0 });
   const [today, setToday] = useState(0);
   const [challenge, setChallenge] = useState<Mode | null>(null);
+  // Tabla de tipos del combate: cerrada por defecto; se recuerda en el navegador.
+  const [types, setTypes] = useState(false);
+  const toggleTypes = () =>
+    setTypes((o) => {
+      try {
+        localStorage.setItem("g-types", o ? "0" : "1");
+      } catch {}
+      return !o;
+    });
 
   useEffect(() => {
     window.scrollTo({ top: 0 });
@@ -105,6 +114,9 @@ export function Game({ data }: { data: GameData }) {
   useEffect(() => {
     setToday(dailyNumber());
     setChallenge(challengeFromUrl());
+    try {
+      setTypes(localStorage.getItem("g-types") === "1");
+    } catch {}
   }, []);
 
   if (data.players.length < 3 || !Object.keys(data.champions).length) {
@@ -297,7 +309,7 @@ export function Game({ data }: { data: GameData }) {
     );
   } else if (screen.s === "battle") {
     body = (
-      <div className="g-battle-layout">
+      <div className={`g-battle-layout${types ? " open" : ""}`}>
         <BattleView
           battle={screen.battle}
           onAction={(a: Action) => go({ s: "battle", battle: playTurn(screen.battle, a) })}
@@ -306,8 +318,9 @@ export function Game({ data }: { data: GameData }) {
             setRun(res.run);
             go(res.run.over ? { s: "end" } : { s: "reward", battle: screen.battle, gold: res.gold, levels: res.levels, reward: res.reward });
           }}
+          onTypes={toggleTypes}
         />
-        <TypeChart battle={screen.battle} />
+        {types ? <TypeChart battle={screen.battle} onClose={toggleTypes} /> : null}
       </div>
     );
   } else if (screen.s === "reward") {
@@ -416,7 +429,7 @@ export function Game({ data }: { data: GameData }) {
   }
 
   return (
-    <div className={`g-wrap${screen.s === "battle" ? " wide" : ""}`}>
+    <div className={`g-wrap${screen.s === "battle" && types ? " wide" : ""}`}>
       {screen.s !== "end" ? <Hud run={run} data={data} /> : null}
       {body}
     </div>

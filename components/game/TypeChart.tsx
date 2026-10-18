@@ -3,7 +3,7 @@
 // Tabla de tipos del combate: contra quién pega fuerte cada clase y de quién
 // recibe. Resalta las clases que hay ahora en el campo.
 
-import { useState } from "react";
+import { useEffect, useRef } from "react";
 import { useLocale } from "@/components/LocaleProvider";
 import { TypeBadge } from "@/components/game/parts";
 import { STRONG, type Battle } from "@/lib/game/engine";
@@ -19,24 +19,29 @@ const onField = (b: Battle, side: 0 | 1) =>
     .filter((f) => f && f.hp > 0 && !f.champ.tags.includes("Monster"))
     .map((f) => f.champ.cls);
 
-export function TypeChart({ battle }: { battle: Battle }) {
+export function TypeChart({ battle, onClose }: { battle: Battle; onClose: () => void }) {
   const { t } = useLocale();
   const mine = onField(battle, 0);
   const foes = onField(battle, 1);
-  // En pantallas estrechas va debajo del combate y se puede plegar.
-  const [open, setOpen] = useState(true);
+  const ref = useRef<HTMLElement>(null);
+  // En pantallas estrechas sale debajo del combate: se lleva a la vista al abrirla.
+  useEffect(() => {
+    if (window.matchMedia("(max-width: 1000px)").matches) ref.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, []);
   const pill = (c: Cls, on: boolean) => (
     <span key={c} className={on ? "on" : ""}>
       <TypeBadge cls={c} />
     </span>
   );
   return (
-    <aside className={`g-types card${open ? " open" : ""}`}>
-      <button type="button" className="g-types-toggle px-small" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
-        {t("Tabla de tipos", "Type chart")} <span aria-hidden>{open ? "▲" : "▼"}</span>
-      </button>
+    <aside ref={ref} className="g-types card">
       <div className="g-types-body">
-        <div className="px-small g-types-title">{t("Tabla de tipos", "Type chart")}</div>
+        <div className="px-small g-types-title">
+          {t("Tabla de tipos", "Type chart")}
+          <button type="button" className="g-types-close" onClick={onClose} aria-label={t("Cerrar la tabla de tipos", "Close the type chart")}>
+            ✕
+          </button>
+        </div>
         <div className="g-types-head muted">
           <span />
           <span className="eff up">{t("Fuerte ×1,3", "Strong ×1.3")}</span>
