@@ -3,6 +3,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { notFound } from "next/navigation";
 import "@fontsource/press-start-2p/400.css";
 import "@fontsource/vt323/400.css";
+import "@fontsource/jersey-10/400.css";
 import "../globals.css";
 import { AuthorBadge } from "@/components/AuthorBadge";
 import { LocaleProvider } from "@/components/LocaleProvider";
