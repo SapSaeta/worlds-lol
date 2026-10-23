@@ -244,7 +244,7 @@ export function Game({ data }: { data: GameData }) {
             <button type="button" className="btn g-start" onClick={() => start(challenge)}>
               {challenge.daily ? t(`Jugar el reto #${challenge.daily}`, `Play challenge #${challenge.daily}`) : t("Aceptar el reto", "Accept the challenge")}
             </button>
-            <p className="px-small g-mode-note">
+            <p className="g-mode-note">
               {t("La misma partida que te han pasado: mismos entrenadores, mismo mapa. ¿Llegas más lejos?", "The same run you were sent: same trainers, same map. Can you go further?")}
             </p>
             <button type="button" className="btn" onClick={free}>
@@ -257,7 +257,7 @@ export function Game({ data }: { data: GameData }) {
               {t("Reto del día", "Daily challenge")}
               {today ? ` #${today}` : ""}
             </button>
-            <p className="px-small g-mode-note">{t("La misma partida para todos hoy. Compárate con tus amigos.", "The same run for everyone today. Compare with your friends.")}</p>
+            <p className="g-mode-note">{t("La misma partida para todos hoy. Compárate con tus amigos.", "The same run for everyone today. Compare with your friends.")}</p>
             <button type="button" className="btn" onClick={free}>
               {t("Partida libre", "Free play")}
             </button>
@@ -760,7 +760,7 @@ function End({ run, data, onAgain }: { run: Run; data: GameData; onAgain: () => 
             </ul>
           </div>
           {run.daily ? (
-            <p className="px-small g-mode-note">
+            <p className="g-mode-note">
               {t("Mañana hay reto nuevo. Pásale el enlace a un amigo: jugará tu misma partida.", "New challenge tomorrow. Send the link to a friend: they'll play your same run.")}
             </p>
           ) : null}

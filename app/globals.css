@@ -1,6 +1,6 @@
 /* Estética inspirada en pokelike.xyz: escena pixelada de fondo, cartas color
    crema con borde negro y sombra dura, títulos amarillos en Press Start 2P y
-   texto monoespaciado pixel. Los azules son un guiño a KOI: el #4b9bec es el
+   cuerpo en Jersey 10 (pixel pero legible y con cifras claras: VT323 se leía mal en tamaños pequeños). Los azules son un guiño a KOI: el #4b9bec es el
    del escudo oficial de Movistar KOI y los marinos son de su misma familia. */
 
 :root {
@@ -30,7 +30,7 @@
   --red: #e04848;
 
   --font-pixel: "Press Start 2P", ui-monospace, monospace;
-  --font-body: "VT323", ui-monospace, monospace;
+  --font-body: "Jersey 10", "VT323", ui-monospace, monospace;
   --b: 3px;
   --sh: 6px;
   --header-h: 72px;
@@ -50,7 +50,6 @@ body {
   font-size: 20px;
   line-height: 1.15;
   font-variant-ligatures: none;
-  -webkit-font-smoothing: none;
 }
 
 body {
@@ -95,11 +94,11 @@ button {
   line-height: 1.5;
 }
 
+/* Texto de detalle: en Press Start 2P a 8px no se leía, va en la fuente de cuerpo */
 .px-small {
-  font-family: var(--font-pixel);
-  font-size: 8px;
-  line-height: 1.6;
-  letter-spacing: 0.3px;
+  font-family: var(--font-body);
+  font-size: 18px;
+  line-height: 1.2;
 }
 
 .screen-title {
@@ -205,7 +204,7 @@ button {
 
 .btn.sm {
   padding: 7px 10px;
-  font-size: 8px;
+  font-size: 9px;
 }
 
 .icon-btn {
@@ -230,7 +229,7 @@ button {
   display: inline-block;
   padding: 4px 6px 3px;
   font-family: var(--font-pixel);
-  font-size: 8px;
+  font-size: 9px;
   line-height: 1.2;
   text-transform: uppercase;
   color: #fff;
@@ -278,7 +277,7 @@ button {
   text-align: center;
   padding: 4px 4px 3px;
   font-family: var(--font-pixel);
-  font-size: 7px;
+  font-size: 9px;
   text-transform: uppercase;
   color: #fff;
 }
@@ -343,7 +342,7 @@ button {
 
 .stats .k {
   font-family: var(--font-pixel);
-  font-size: 7px;
+  font-size: 9px;
   color: var(--muted);
   text-transform: uppercase;
 }
@@ -366,7 +365,7 @@ button {
 
 .stats .v {
   font-family: var(--font-pixel);
-  font-size: 7px;
+  font-size: 9px;
   color: var(--muted);
   min-width: 22px;
   text-align: right;
@@ -410,7 +409,7 @@ button {
 
 .logo-text small {
   display: block;
-  font-size: 8px;
+  font-size: 9px;
   color: #fff;
   opacity: 0.9;
 }
@@ -741,7 +740,7 @@ button {
 .chip {
   padding: 5px 6px 4px;
   font-family: var(--font-pixel);
-  font-size: 7px;
+  font-size: 9px;
   text-transform: uppercase;
   color: var(--ink-2);
   background: var(--card-2);
@@ -762,7 +761,7 @@ button {
 
 .team-table th {
   font-family: var(--font-pixel);
-  font-size: 7px;
+  font-size: 9px;
   font-weight: normal;
   text-transform: uppercase;
   color: var(--muted);
@@ -815,7 +814,7 @@ button {
 
 .rank {
   font-family: var(--font-pixel);
-  font-size: 8px;
+  font-size: 9px;
   color: var(--muted);
   width: 26px;
   text-align: center;
@@ -841,7 +840,7 @@ button {
   display: grid;
   place-items: center;
   font-family: var(--font-pixel);
-  font-size: 6px;
+  font-size: 8px;
   color: var(--ink-2);
   background: var(--card-2);
   filter: none;
@@ -1094,7 +1093,7 @@ button {
 }
 
 .tour-switch .btn {
-  font-size: 8px;
+  font-size: 9px;
 }
 
 .dex-tabs {
@@ -1128,7 +1127,7 @@ button {
 .select {
   padding: 4px 6px 3px;
   font-family: var(--font-pixel);
-  font-size: 8px;
+  font-size: 9px;
   color: var(--ink);
   background: var(--card);
   border: 2px solid var(--line);
@@ -1155,7 +1154,7 @@ button {
 
 .starter .champ-title {
   min-height: 2.8em;
-  font-size: 8px;
+  font-size: 9px;
   line-height: 1.6;
 }
 
@@ -1214,7 +1213,7 @@ button {
 .mini-roster .badge {
   min-width: 46px;
   flex: none;
-  font-size: 6px;
+  font-size: 8px;
   text-align: center;
 }
 
@@ -1342,7 +1341,7 @@ button {
   top: -22px;
   padding: 3px 5px 2px;
   font-family: var(--font-pixel);
-  font-size: 7px;
+  font-size: 9px;
   text-transform: uppercase;
   color: var(--ink);
   background: var(--title);
@@ -1522,7 +1521,7 @@ button {
 
 .tm-group-title {
   font-family: var(--font-pixel);
-  font-size: 7px;
+  font-size: 9px;
   line-height: 1.5;
   text-transform: uppercase;
   color: var(--ink-2);
@@ -1530,7 +1529,7 @@ button {
 
 .tm-col-note {
   font-family: var(--font-pixel);
-  font-size: 7px;
+  font-size: 9px;
   line-height: 1.5;
   text-align: center;
   color: var(--koi-dark);
@@ -1572,7 +1571,7 @@ button {
 
 .tm-bo {
   font-family: var(--font-pixel);
-  font-size: 7px;
+  font-size: 9px;
   color: var(--koi-dark);
 }
 
@@ -1645,7 +1644,7 @@ button {
 .team-logo.fallback.tm-q {
   width: 20px;
   height: 20px;
-  font-size: 8px;
+  font-size: 9px;
 }
 
 .tm-watch {
@@ -1672,18 +1671,40 @@ button {
   color: var(--koi-light);
 }
 
+/* Texto suelto sobre la escena: placa oscura para que el agua y las luces no lo tapen */
+.on-scene,
+.g-mode-note,
+.site-footer p:not(.author-credit) {
+  padding: 6px 12px;
+  background: rgba(8, 20, 41, 0.88);
+  border: 2px solid var(--slate-lo);
+  color: #e6f0ff;
+  text-shadow: none;
+}
+
 /* Aviso legal de Riot */
 .site-footer {
   max-width: 900px;
   margin: 0 auto;
   padding: 8px 20px 28px;
-  font-size: 17px;
+  font-size: 18px;
+  line-height: 1.25;
   text-align: center;
   color: var(--koi-light);
 }
 
-.site-footer p {
-  margin: 4px 0;
+.site-footer p:not(.author-credit) {
+  margin: 0;
+}
+
+/* Los párrafos del aviso forman una sola placa */
+.site-footer p:not(.author-credit):has(+ p:not(.author-credit)) {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.site-footer p:not(.author-credit) + p:not(.author-credit) {
+  border-top: 0;
 }
 
 /* Firma del autor: texto fijo en la esquina inferior izquierda (el reproductor mini va a la derecha) */
@@ -1719,7 +1740,7 @@ button {
   .site-footer .author-credit {
     position: static;
     margin-top: 12px;
-    font-size: 8px;
+    font-size: 9px;
   }
 }
 
@@ -1780,7 +1801,7 @@ button {
   .nav .btn {
     flex: 1;
     padding: 8px 6px;
-    font-size: 8px;
+    font-size: 9px;
   }
 
   .live-layout {
@@ -1799,7 +1820,7 @@ button {
   }
 
   .player-dock.mini .dock-title {
-    font-size: 7px;
+    font-size: 9px;
   }
 
   .player-bar .now {
@@ -1811,7 +1832,7 @@ button {
   }
 
   .tm-town-name {
-    font-size: 7px;
+    font-size: 9px;
   }
 
   .tm-town-city,
@@ -1911,8 +1932,9 @@ button {
 .g-mode-note {
   margin: 0;
   max-width: 420px;
+  font-size: 20px;
+  line-height: 1.3;
   text-align: center;
-  color: #cfe4ff;
 }
 
 .btn:disabled,
@@ -1926,7 +1948,7 @@ button {
   min-width: 18px;
   padding: 2px 3px 1px;
   font-family: var(--font-pixel);
-  font-size: 8px;
+  font-size: 9px;
   text-align: center;
   color: var(--title);
   background: var(--dark);
@@ -1934,7 +1956,7 @@ button {
 
 .g-lv {
   font-family: var(--font-pixel);
-  font-size: 8px;
+  font-size: 9px;
   color: var(--ink-2);
 }
 
@@ -2074,7 +2096,7 @@ button {
 
 .g-hp-num {
   font-family: var(--font-pixel);
-  font-size: 8px;
+  font-size: 9px;
   color: var(--ink-2);
   white-space: nowrap;
 }
@@ -2719,7 +2741,7 @@ button {
 .g-status {
   padding: 1px 6px;
   font-family: var(--font-pixel);
-  font-size: 8px;
+  font-size: 9px;
   line-height: 14px;
   color: #fff;
   background: #6a6a60;
@@ -2946,7 +2968,7 @@ button {
 }
 
 .g-types-list .badge {
-  font-size: 7px;
+  font-size: 9px;
   padding: 3px 4px 2px;
   opacity: 0.75;
 }
@@ -3425,7 +3447,7 @@ button {
   gap: 2px;
   padding: 6px 2px;
   font-family: var(--font-pixel);
-  font-size: 8px;
+  font-size: 9px;
   color: #6a7488;
   background: #2a3446;
   border: 3px solid var(--line);
@@ -3528,7 +3550,7 @@ button {
 
 .g-share .btn {
   padding: 10px 6px;
-  font-size: 8px;
+  font-size: 9px;
   white-space: normal;
   text-align: center;
 }
@@ -3608,7 +3630,7 @@ button {
   }
 
   .g-track li {
-    font-size: 6px;
+    font-size: 8px;
   }
 }
 
@@ -3813,7 +3835,7 @@ button {
   }
 
   .next-popup-logo .team-logo.fallback {
-    font-size: 8px;
+    font-size: 9px;
   }
 
   .next-popup-code,
@@ -3895,7 +3917,7 @@ html[data-nospoil] .spoil-guard {
 .reveal-btn {
   padding: 3px 6px;
   font-family: var(--font-pixel);
-  font-size: 7px;
+  font-size: 9px;
   line-height: 1.4;
   color: var(--sky);
   background: var(--title);
@@ -3927,7 +3949,7 @@ html[data-nospoil] .spoil-guard {
 .spoiler-gate p {
   margin: 0;
   color: var(--ink-2);
-  line-height: 1.6;
+  line-height: 1.25;
 }
 
 .team-table button:disabled {
@@ -3952,7 +3974,7 @@ html[data-nospoil] .spoil-guard {
 
 .tm-path .reveal-btn {
   width: auto;
-  font-size: 7px;
+  font-size: 9px;
   padding: 3px 6px;
 }
 
@@ -3972,13 +3994,13 @@ html[data-nospoil] .spoil-guard {
     margin-left: auto;
     gap: 4px;
     padding: 4px 5px;
-    font-size: 7px;
+    font-size: 9px;
     white-space: normal;
     text-align: left;
   }
 
   .spoiler-toggle .spoiler-label {
-    max-width: 56px;
+    max-width: 72px;
   }
 
   .spoiler-toggle .spoiler-switch {
