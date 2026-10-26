@@ -17,7 +17,8 @@ export function LiveView({ initialData }: { initialData: WorldsData }) {
       if (document.hidden) return;
       setLoading(true);
       try {
-        const res = await fetch("/api/worlds", { cache: "no-store" });
+        // Sin "no-store": así el navegador no pide saltarse la caché del CDN.
+        const res = await fetch("/api/worlds");
         if (res.ok && alive) setData(await res.json());
       } catch {
         // Si falla, mantenemos los últimos datos buenos.
@@ -25,12 +26,14 @@ export function LiveView({ initialData }: { initialData: WorldsData }) {
         if (alive) setLoading(false);
       }
     };
+    // La página puede venir de la caché con unos minutos: si es así, se refresca ya.
+    if (Date.now() - Date.parse(initialData.updatedAt) > REFRESH_MS) void tick();
     const id = setInterval(tick, REFRESH_MS);
     return () => {
       alive = false;
       clearInterval(id);
     };
-  }, []);
+  }, [initialData.updatedAt]);
 
   return (
     <div className="live-layout">

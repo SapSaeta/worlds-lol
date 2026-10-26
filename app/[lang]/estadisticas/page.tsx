@@ -27,6 +27,6 @@ export async function generateMetadata({ params }: PageProps<"/[lang]/estadistic
 
 export default async function Estadisticas({ params }: PageProps<"/[lang]/estadisticas">) {
   const l = await lang(params);
-  const [stats, data, map] = await Promise.all([getStats(TOURNAMENT).then((s) => localizeStats(s, l)), getWorldsData(TOURNAMENT), getTournamentMap(TOURNAMENT)]);
+  const [stats, data, map] = await Promise.all([getStats(TOURNAMENT).then((s) => localizeStats(s, l)), getWorldsData(TOURNAMENT, 300), getTournamentMap(TOURNAMENT, 300)]);
   return <Worlddex stats={stats} teams={data.source === "demo" ? [] : data.teams} ongoing tournaments={worlddexLinks(l)} map={map} stages={stagesFor(TOURNAMENT, l)} />;
 }

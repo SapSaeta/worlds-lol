@@ -6,7 +6,7 @@
 import { TOURNAMENT, type TournamentConfig } from "@/config/tournament";
 import { DD_LANG, championIcon, getChampions, type Champion } from "@/lib/ddragon";
 import type { Locale } from "@/lib/i18n";
-import { api, fetchSchedule, fetchTeamDetails, fetchTeamSlugs, withActiveRoster, type Json, type TeamDetails } from "@/lib/lolesports";
+import { ageFor, api, cachedBy, fetchSchedule, fetchTeamDetails, fetchTeamSlugs, withActiveRoster, type Json, type TeamDetails } from "@/lib/lolesports";
 
 const FEED = "https://feed.lolesports.com/livestats/v1";
 
@@ -254,7 +254,17 @@ export async function localizeStats(stats: StatsData, locale: Locale): Promise<S
   };
 }
 
-export async function getStats(t: TournamentConfig = TOURNAMENT): Promise<StatsData> {
+/**
+ * Estadísticas de un torneo. Leer todas las partidas cuesta mucha CPU, así que el
+ * resultado se guarda 5 minutos mientras se juega y un día cuando ya terminó.
+ */
+export function getStats(t: TournamentConfig = TOURNAMENT): Promise<StatsData> {
+  return cachedStats[ageFor(t, 300)](t.slug);
+}
+
+const cachedStats = cachedBy("stats", computeStats);
+
+async function computeStats(t: TournamentConfig): Promise<StatsData> {
   try {
     return await buildStats(t);
   } catch (err) {

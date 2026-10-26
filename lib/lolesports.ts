@@ -2,7 +2,8 @@
 // la clave es la misma que usa la web oficial y puede cambiar sin aviso, por eso
 // todo el parseo es defensivo y, si algo falla, se sirven datos de demostración.
 
-import { TOURNAMENT, type TournamentConfig } from "@/config/tournament";
+import { unstable_cache } from "next/cache";
+import { TOURNAMENT, getTournament, type TournamentConfig } from "@/config/tournament";
 import { demoData } from "@/lib/demo";
 import { buildTeams } from "@/lib/teams";
 import type { Gpr, LiveStream, MapStage, Match, MatchTeam, Player, TournamentMap, WorldsData } from "@/lib/types";
@@ -216,7 +217,19 @@ async function recentPlayerIds(team: TeamDetails, leagueIds: string[]): Promise<
  * jugadores). Nos quedamos con los que han jugado sus últimas series oficiales;
  * si no hay partidas recientes, se deja la plantilla tal cual.
  */
-export async function withActiveRoster(team: TeamDetails, t: TournamentConfig): Promise<TeamDetails> {
+export function withActiveRoster(team: TeamDetails, t: TournamentConfig): Promise<TeamDetails> {
+  return cachedRoster(team, t.slug);
+}
+
+// Sacar la plantilla activa lee decenas de calendarios y partidas por equipo: el
+// resultado se guarda 6 horas en vez de rehacerse en cada regeneración de página.
+const cachedRoster = unstable_cache(
+  (team: TeamDetails, slug: string) => activeRoster(team, getTournament(slug) ?? TOURNAMENT),
+  ["active-roster"],
+  { revalidate: 21600 },
+);
+
+async function activeRoster(team: TeamDetails, t: TournamentConfig): Promise<TeamDetails> {
   const leagues = await leagueIdsByName().catch(() => new Map<string, string>());
   const home = team.region ? leagues.get(team.region) : undefined;
   const played = await recentPlayerIds(team, [t.leagueId, ...(home ? [home] : [])]).catch(() => new Set<string>());
@@ -224,7 +237,28 @@ export async function withActiveRoster(team: TeamDetails, t: TournamentConfig): 
   return { ...team, players: team.players.filter((p) => played.has(p.id)) };
 }
 
-export async function getWorldsData(t: TournamentConfig = TOURNAMENT): Promise<WorldsData> {
+/**
+ * Datos del torneo para la portada, /api/worlds y la Worlddex. Se calculan una
+ * vez por minuto y los comparten todas las páginas, en vez de rehacerlos cada una.
+ */
+export function getWorldsData(t: TournamentConfig = TOURNAMENT, maxAge: CacheAge = 60): Promise<WorldsData> {
+  return cachedWorlds[ageFor(t, maxAge)](t.slug);
+}
+
+/** Segundos que se reutiliza un resultado calculado. Los torneos terminados, un día. */
+export type CacheAge = 60 | 300 | 86400;
+export const ageFor = (t: TournamentConfig, maxAge: CacheAge): CacheAge => (Date.parse(t.end) < Date.now() ? 86400 : maxAge);
+
+/** Una caché por duración: unstable_cache fija la suya al crearse. */
+export function cachedBy<T>(name: string, fn: (t: TournamentConfig) => Promise<T>): Record<CacheAge, (slug: string) => Promise<T>> {
+  const run = (slug: string) => fn(getTournament(slug) ?? TOURNAMENT);
+  const make = (revalidate: CacheAge) => unstable_cache(run, [name, String(revalidate)], { revalidate });
+  return { 60: make(60), 300: make(300), 86400: make(86400) };
+}
+
+const cachedWorlds = cachedBy("worlds-data", (t) => buildWorldsData(t));
+
+async function buildWorldsData(t: TournamentConfig): Promise<WorldsData> {
   try {
     const matches = await fetchSchedule(t);
     if (matches.length === 0) throw new Error("El calendario llegó vacío");
@@ -301,7 +335,13 @@ function standingsMatch(m: Json): Match {
  * rivales, con fecha, formato y resultado. La clasificación oficial da qué
  * serie va en cada fase y el calendario pone fechas y marcadores.
  */
-export async function getTournamentMap(t: TournamentConfig = TOURNAMENT): Promise<TournamentMap> {
+export function getTournamentMap(t: TournamentConfig = TOURNAMENT, maxAge: CacheAge = 60): Promise<TournamentMap> {
+  return cachedMap[ageFor(t, maxAge)](t.slug);
+}
+
+const cachedMap = cachedBy("tournament-map", (t) => buildTournamentMap(t));
+
+async function buildTournamentMap(t: TournamentConfig): Promise<TournamentMap> {
   try {
     const done = Date.parse(t.end) < Date.now();
     const [s, schedule] = await Promise.all([
