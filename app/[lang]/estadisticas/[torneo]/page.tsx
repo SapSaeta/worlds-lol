@@ -24,7 +24,7 @@ export default async function Archivo({ params }: PageProps<"/[lang]/estadistica
   const l = isLocale(lang) ? lang : "es";
   const t = getTournament(torneo);
   if (!t) notFound();
-  const [stats, data, map] = await Promise.all([getStats(t).then((s) => localizeStats(s, l)), getWorldsData(t), getTournamentMap(t)]);
+  const [stats, data, map] = await Promise.all([getStats(t).then((s) => localizeStats(s, l)), getWorldsData(t, 300), getTournamentMap(t, 300)]);
   const ongoing = Date.parse(t.end) > Date.now();
   return <Worlddex stats={stats} teams={data.source === "demo" ? [] : data.teams} ongoing={ongoing} tournaments={worlddexLinks(l)} map={map} stages={stagesFor(t, l)} />;
 }

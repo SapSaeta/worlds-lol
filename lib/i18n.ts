@@ -1,6 +1,6 @@
 // Idiomas de la web. El español va sin prefijo (worlddex.lol/jugar) y el inglés
 // cuelga de /en con rutas propias (worlddex.lol/en/play). Por dentro las
-// páginas viven en app/[lang]/… con los nombres en español; proxy.ts traduce
+// páginas viven en app/[lang]/… con los nombres en español; next.config.ts traduce
 // las URL públicas a esas rutas.
 
 export type Locale = "es" | "en";
